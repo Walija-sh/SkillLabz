@@ -54,7 +54,7 @@ const sendErrorProd = (err, req, res) => {
 };
 
 // ERROR MIDDLEWARE GLOBAL
-const globalErroHandler = (err, req, res, next) => {
+const globalErrorHandler = (err, req, res, next) => {
   // stack trace tells about error in which line
   // console.log(err.stack);
   console.log(process.env.NODE_ENV);
@@ -78,4 +78,4 @@ const globalErroHandler = (err, req, res, next) => {
   }
 };
 
-export default globalErroHandler;
+export default globalErrorHandler;

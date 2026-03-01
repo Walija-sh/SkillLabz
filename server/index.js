@@ -3,6 +3,8 @@ import mongoose from 'mongoose';
 import cors from 'cors'
 import 'dotenv/config'
 import connectDb from './config/db.js'
+import globalErrorHandler from './middleware/globalErrorHandler.js'
+import AuthRouter from './routes/auth.routes.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -14,10 +16,22 @@ connectDb();
 app.use(cors());
 app.use(express.json());
 
-// Routes placeholder
+// =======================
+// Routes
+// =======================
+
+app.use('/api/auth',AuthRouter);
+// test route
+
 app.get('/', (req, res) => res.send('SkillLabz API Running'));
 
 
-//https://chat.deepseek.com/share/1v9w6a1a1f8pnoy0o7
+// global error handler
+app.use(globalErrorHandler);
 
 app.listen(PORT, () => console.log(`Server running on port http://localhost:${PORT}`));
+
+// handle user kis type rental ya lister- no need as it will limit user
+// handle verfication process- email done, 
+// now handle admin verfication , plus  restrict to funct as well then auth done
+// then add reviews
