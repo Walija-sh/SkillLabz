@@ -15,7 +15,7 @@ AuthRouter.patch('/complete-profile', protect, completeProfile);
 AuthRouter.patch(
   '/upload-profile-image',
   protect,
-  upload.single('image'),
+  upload.single('profileImage'),
   uploadProfileImage
 );
 

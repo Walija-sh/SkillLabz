@@ -99,6 +99,11 @@ isBadgeVerified: {
   type: Boolean,
   default: false
 },
+badgeType: {
+  type: String,
+  enum: ["trusted"], // expandable later
+  default: null
+},
 
 
   profileCompleted: {

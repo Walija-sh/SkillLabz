@@ -4,10 +4,34 @@ import cloudinary from '../config/cloudinary.js';
 
 const storage = new CloudinaryStorage({
   cloudinary,
-  params: {
-    folder: 'skilllabz/profile-images',
-    allowed_formats: ['jpg', 'jpeg', 'png'],
-    transformation: [{ width: 500, height: 500, crop: 'limit' }]
+
+  params: async (req, file) => {
+
+    let folder = 'skilllabz/misc';
+
+    // ✅ profile image
+    if (file.fieldname === 'profileImage') {
+      folder = 'skilllabz/profile-images';
+    }
+
+    // ✅ verification docs
+    if (file.fieldname === 'cnicFront') {
+      folder = 'skilllabz/verification/cnic-front';
+    }
+
+    if (file.fieldname === 'cnicBack') {
+      folder = 'skilllabz/verification/cnic-back';
+    }
+
+    if (file.fieldname === 'selfie') {
+      folder = 'skilllabz/verification/selfies';
+    }
+
+    return {
+      folder,
+      allowed_formats: ['jpg', 'jpeg', 'png'],
+      transformation: [{ width: 800, height: 800, crop: 'limit' }]
+    };
   }
 });
 

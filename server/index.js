@@ -5,6 +5,7 @@ import 'dotenv/config'
 import connectDb from './config/db.js'
 import globalErrorHandler from './middleware/globalErrorHandler.js'
 import AuthRouter from './routes/auth.routes.js';
+import VerificationRouter from './routes/verification.routes.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -21,6 +22,7 @@ app.use(express.json());
 // =======================
 
 app.use('/api/auth',AuthRouter);
+app.use("/api/verification", VerificationRouter);
 // test route
 
 app.get('/', (req, res) => res.send('SkillLabz API Running'));
@@ -33,5 +35,7 @@ app.listen(PORT, () => console.log(`Server running on port http://localhost:${PO
 
 // handle user kis type rental ya lister- no need as it will limit user
 // handle verfication process- email done, 
-// now handle admin verfication , plus  restrict to funct as well then auth done
+// now handle admin verfication , plus  restrict to funct as well then auth done, later can handle this verification using ai
+// rn verfication using airbnb id verification method
+// upload cnic, upload or take life selfie, enter legal personal details to match, set profile for review
 // then add reviews
