@@ -14,6 +14,11 @@ const storage = new CloudinaryStorage({
       folder = 'skilllabz/profile-images';
     }
 
+    // ✅ item images
+    if (file.fieldname === 'images') {
+      folder = 'skilllabz/item-images';
+    }
+
     // ✅ verification docs
     if (file.fieldname === 'cnicFront') {
       folder = 'skilllabz/verification/cnic-front';
@@ -37,7 +42,7 @@ const storage = new CloudinaryStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
+  limits: { fileSize: 2 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (!file.mimetype.startsWith('image')) {
       cb(new Error('Please upload an image'), false);

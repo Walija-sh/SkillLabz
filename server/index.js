@@ -6,6 +6,7 @@ import connectDb from './config/db.js'
 import globalErrorHandler from './middleware/globalErrorHandler.js'
 import AuthRouter from './routes/auth.routes.js';
 import VerificationRouter from './routes/verification.routes.js';
+import ItemRouter from './routes/item.routes.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -23,6 +24,7 @@ app.use(express.json());
 
 app.use('/api/auth',AuthRouter);
 app.use("/api/verification", VerificationRouter);
+app.use("/api/items", ItemRouter);
 // test route
 
 app.get('/', (req, res) => res.send('SkillLabz API Running'));
