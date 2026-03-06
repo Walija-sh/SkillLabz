@@ -1,17 +1,25 @@
-import { Outlet } from "react-router-dom";
-// import Header from "./Header"; // Adjust path if needed
+import { Outlet, useLocation } from "react-router-dom";
 import Navbar from "./Navbar";
-import Footer from "./Footer"; // Adjust path if needed
-
+import Footer from "./Footer"; 
 
 export default function MainLayout() {
+  const location = useLocation();
+
+  // Define the routes where the Navbar and Footer should be hidden
+  const hiddenRoutes = ['/login', '/register', '/resend-verification'];
+  const isHiddenRoute = hiddenRoutes.includes(location.pathname);
+
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
-      <Navbar />
+      {/* Conditionally render the Navbar */}
+      {!isHiddenRoute && <Navbar />}
+      
       <main className="grow">
         <Outlet />
       </main>
-      <Footer />
+      
+      {/* Conditionally render the Footer */}
+      {!isHiddenRoute && <Footer />}
     </div>
   );
 }
