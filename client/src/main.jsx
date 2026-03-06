@@ -1,13 +1,19 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.jsx'
-import { HashRouter } from 'react-router-dom'
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
+import { Provider } from 'react-redux'; 
+import store from './store/store'; 
+import App from './App.jsx';
+import './index.css';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <HashRouter>
-    <App />
-    </HashRouter>
-  </StrictMode>,
-)
+    {/* Provides global state to the entire SkillLabz interface */}
+    <Provider store={store}> 
+      {/* Enables clean, modern URLs for better SEO and UX */}
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </Provider>
+  </StrictMode>
+);
