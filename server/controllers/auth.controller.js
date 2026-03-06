@@ -22,33 +22,21 @@ const registerUser = catchAsync(async (req, res, next) => {
     return next(new AppError('User already exists', 409));
   }
 
-  // Create email verification token
-  const rawToken = crypto.randomBytes(32).toString("hex");
-
-  const hashedToken = crypto
-    .createHash("sha256")
-    .update(rawToken)
-    .digest("hex");
-
   const user = await User.create({
     username,
     email,
-    password,
-    emailVerificationToken: hashedToken,
-    emailVerificationExpire: Date.now() + 15 * 60 * 1000
+    password
   });
 
-  const verificationURL = `${process.env.CLIENT_URL}/verify-email/${rawToken}`;
+   const token= generateToken(user._id);
 
-  await sendEmail({
-    to: user.email,
-    subject: "Verify your email - SkillLabz",
-    html: verificationEmailTemplate(user.username, verificationURL)
-  });
+
+
 
   res.status(201).json({
     status: 'success',
-    message: 'Registered successfully. Please verify your email.'
+    message: 'Registered successfully.',
+    data:formatUserResponse(user,token)
   });
 });
 const verifyEmail = catchAsync(async (req, res, next) => {
@@ -79,13 +67,11 @@ const verifyEmail = catchAsync(async (req, res, next) => {
 
   res.status(200).json({
     status: 'success',
-    message: 'Email verified successfully. You can now login.'
+    message: 'Email verified successfully.'
   });
 });
-const resendVerificationEmail = catchAsync(async (req, res, next) => {
-  const { email } = req.body;
-
-  const user = await User.findOne({ email });
+const sendVerificationEmail = catchAsync(async (req, res, next) => {
+ const user = await User.findById(req.user._id);
 
   if (!user) {
     return next(new AppError('User not found', 404));
@@ -114,7 +100,7 @@ const resendVerificationEmail = catchAsync(async (req, res, next) => {
 
   res.status(200).json({
     status: 'success',
-    message: 'Verification email resent successfully.'
+    message: 'Verification email sent successfully.'
   });
 });
 const loginUser=catchAsync(async(req,res,next)=>{
@@ -136,10 +122,7 @@ const loginUser=catchAsync(async(req,res,next)=>{
         if(!validPassword){
             return next(new AppError('Invalid Credentials',401));
         }
-        if (!user.isEmailVerified) {
-    return next(new AppError('Please verify your email before login', 401));
-  }
-
+      
         const token= generateToken(user._id);
 
 
@@ -246,4 +229,4 @@ const uploadProfileImage = catchAsync(async (req, res, next) => {
   });
 
 });
-export {registerUser,loginUser,getMe,completeProfile,uploadProfileImage,verifyEmail,resendVerificationEmail }
+export {registerUser,loginUser,getMe,completeProfile,uploadProfileImage,verifyEmail,sendVerificationEmail }
