@@ -5,6 +5,11 @@ export default function Footer() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // 👇 ADDED THIS: If the path is anything other than the home page, render nothing!
+  if (location.pathname !== '/') {
+    return null;
+  }
+
   // Function to handle smooth scrolling to homepage sections
   const handleScroll = (e, href) => {
     e.preventDefault();
