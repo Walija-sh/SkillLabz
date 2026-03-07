@@ -34,17 +34,18 @@ export default function Login() {
 
     try {
       // 1. Call the backend using Axios via authService
-      const session = await authService.login(formData);
+      const result = await authService.login(formData);
 
-      if (session && session.user) {
-        // 2. Update Redux global state with user data
-        dispatch(authLogin(session.user));
+      // 2. Check for 'result.data' based on your backend formatting
+      if (result && result.data) {
         
-        // 3. Navigate to the home or dashboard
+        // 3. Update Redux global state with user data
+        dispatch(authLogin(result.data));
+        
+        // 4. Navigate directly to Home page after successful login
         navigate('/'); 
       }
     } catch (err) {
-      // Error handling normalized by authService
       setUiState({
         isLoading: false,
         error: err?.message || "Invalid email or password. Please try again.",
@@ -94,7 +95,8 @@ export default function Login() {
                 required
               />
               <div className="mt-1 flex justify-end">
-                <Link to="/resend-verification" className="text-xs font-medium text-blue-600 hover:text-blue-500">
+                {/* Updated this link to point to a future forgot-password route */}
+                <Link to="/forgot-password" className="text-xs font-medium text-blue-600 hover:text-blue-500">
                   Forgot password?
                 </Link>
               </div>
