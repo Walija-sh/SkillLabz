@@ -6,6 +6,7 @@ const formatUserResponse = (user, token = null) => {
     username: user.username,
     email: user.email,
     bio: user.bio,
+    phone: user.phone,
     profileImage: user.profileImage,
     profileCompleted: user.profileCompleted,
     isEmailVerified: user.isEmailVerified,

@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
+import { login } from '../../store/authSlice';
 import authService from '../../services/auth.service';
 import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
 
 export default function Register() {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const [formData, setFormData] = useState({
     username: '',
@@ -32,20 +35,23 @@ export default function Register() {
     setUiState({ isLoading: true, error: null, success: null });
 
     try {
-      // 1. Trigger actual Axios call to Vercel via authService
+      // 1. Trigger signup call (which now returns a token and logs user in)
       const result = await authService.signup(formData);
       
-      if (result) {
+      if (result && result.data) {
+        // 2. Dispatch Redux action to save the user session globally
+        dispatch(login(result.data));
+
         setUiState({
           isLoading: false,
           error: null,
-          success: 'Account created! Redirecting to login...',
+          success: 'Account created successfully! Redirecting to dashboard...',
         });
 
-        // 2. Redirect to login after a brief delay so user sees success message
+        // 3. Redirect directly to the secure Dashboard after a brief delay
         setTimeout(() => {
-          navigate('/login');
-        }, 2000);
+          navigate('/home'); 
+        }, 1500);
       }
       
     } catch (err) {

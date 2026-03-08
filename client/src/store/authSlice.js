@@ -1,15 +1,21 @@
 import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
-  status: false, // true if user is logged in
-  userData: null, // holds verified profile details and trust scores
+  status: false, 
+  userData: null, 
 };
 
 const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
+    // Standard action for Register/Login
     login: (state, action) => {
+      state.status = true;
+      state.userData = action.payload; 
+    },
+    // Alias action to fix SyntaxError in CompleteProfile
+    authLogin: (state, action) => {
       state.status = true;
       state.userData = action.payload;
     },
@@ -17,14 +23,19 @@ const authSlice = createSlice({
       state.status = false;
       state.userData = null;
     },
-    // Industry-level: update user metadata (e.g., KYC status or TrustScore)
     updateUser: (state, action) => {
       if (state.userData) {
         state.userData = { ...state.userData, ...action.payload };
       }
     },
+    setEmailVerified: (state) => {
+      if (state.userData) {
+        state.userData.isEmailVerified = true;
+      }
+    }
   },
 });
 
-export const { login, logout, updateUser } = authSlice.actions;
+// Exporting both names to satisfy all component imports
+export const { login, authLogin, logout, updateUser, setEmailVerified } = authSlice.actions;
 export default authSlice.reducer;
