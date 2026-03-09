@@ -2,6 +2,7 @@ import Item from "../models/Item.js";
 import catchAsync from "../utils/catchAsync.js";
 import AppError from "../utils/appError.js";
 import cloudinary from "../config/cloudinary.js";
+import buildItemFilters from "../utils/buildItemFilters.js";
 
 // -------------------------
 // CREATE ITEM
@@ -78,43 +79,20 @@ if (
 // GET ALL ITEMS (FILTER + PAGINATION)
 // -------------------------
 export const getAllItems = catchAsync(async (req, res, next) => {
-  const {
-    category,
-    city,
-    minPrice,
-    maxPrice,
-    keyword,
-    page = 1,
-    limit = 10
-  } = req.query;
 
-  const queryObj = {
-    isAvailable: true,
-    isApproved: true
-  };
+  const { page = 1, limit = 10 } = req.query;
 
-  if (category) queryObj.category = category;
-  if (city) queryObj["location.city"] = city;
-
-  if (minPrice || maxPrice) {
-    queryObj.pricePerDay = {};
-    if (minPrice) queryObj.pricePerDay.$gte = Number(minPrice);
-    if (maxPrice) queryObj.pricePerDay.$lte = Number(maxPrice);
-  }
-
-  if (keyword) {
-    queryObj.title = { $regex: keyword, $options: "i" };
-  }
+  const filters = buildItemFilters(req.query);
 
   const skip = (page - 1) * limit;
 
-  const items = await Item.find(queryObj)
+  const items = await Item.find(filters)
     .populate("owner", "username profileImage")
     .skip(skip)
     .limit(Number(limit))
     .sort("-createdAt");
 
-  const total = await Item.countDocuments(queryObj);
+  const total = await Item.countDocuments(filters);
 
   res.status(200).json({
     status: "success",
@@ -227,22 +205,26 @@ export const getMyItems = catchAsync(async (req, res, next) => {
 // GET NEARBY ITEMS (GEO SEARCH)
 // -------------------------
 export const getNearbyItems = catchAsync(async (req, res, next) => {
+
   const { lat, lng, distance = 10 } = req.query;
 
   if (!lat || !lng) {
     return next(new AppError("Please provide latitude and longitude", 400));
   }
 
-  const radius = distance / 6378.1; // Earth radius in km
+  const filters = buildItemFilters(req.query);
 
-  const items = await Item.find({
-    location: {
-      $geoWithin: {
-        $centerSphere: [[lng, lat], radius]
-      }
-    },
-    isAvailable: true
-  }).populate("owner", "username profileImage");
+  const radius = distance / 6378.1;
+
+  filters.location = {
+    $geoWithin: {
+      $centerSphere: [[lng, lat], radius]
+    }
+  };
+
+  const items = await Item.find(filters)
+    .populate("owner", "username profileImage")
+    .sort("-createdAt");
 
   res.status(200).json({
     status: "success",
