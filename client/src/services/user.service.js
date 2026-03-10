@@ -47,10 +47,10 @@ const userService = {
 
   /**
    * Sends the token from the URL to the backend to verify the email.
-   * Note: If your backend route is router.get, change this to API.get
+   * Switched to API.get to match standard email link routing.
    */
   verifyEmailToken: async (token) => {
-    const response = await API.post(`/auth/verify-email/${token}`);
+    const response = await API.get(`/auth/verify-email/${token}`);
     return response.data;
   }
 };

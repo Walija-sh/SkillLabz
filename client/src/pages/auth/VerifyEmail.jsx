@@ -1,92 +1,92 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { useSelector } from 'react-redux';
-import authService from '../../services/auth.service';
-import Button from '../../components/common/Button';
+import React, { useEffect, useState, useRef } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
+import { updateUser } from '../../store/authSlice';
+import userService from '../../services/user.service';
 
 export default function VerifyEmail() {
-  // Grab the logged-in user's data from Redux
-  const user = useSelector((state) => state.auth.userData);
+  const { token } = useParams();
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
 
-  const [uiState, setUiState] = useState({
-    isLoading: false,
-    error: null,
-    success: null,
-  });
+  const [status, setStatus] = useState('loading');
+  const [errorMessage, setErrorMessage] = useState('');
   
-  // Rate limiting state: Countdown timer (seconds) to prevent spamming
-  const [countdown, setCountdown] = useState(0);
+  // 🛡️ GUARD: Tracks if we have already made the API call
+  const hasAttempted = useRef(false);
 
   useEffect(() => {
-    let timer;
-    if (countdown > 0) {
-      timer = setInterval(() => setCountdown((prev) => prev - 1), 1000);
+    const verifyToken = async () => {
+      try {
+        await userService.verifyEmailToken(token);
+        
+        setStatus('success');
+        dispatch(updateUser({ isEmailVerified: true }));
+
+        setTimeout(() => {
+          navigate('/profile');
+        }, 3000);
+
+      } catch (error) {
+        setStatus('error');
+        setErrorMessage(error.response?.data?.message || 'Verification failed. The link may be invalid or expired.');
+      }
+    };
+
+    if (token) {
+      // 🛡️ GUARD: Only run the API call if we haven't tried yet
+      if (!hasAttempted.current) {
+        hasAttempted.current = true;
+        verifyToken();
+      }
+    } else {
+      setStatus('error');
+      setErrorMessage('No verification token found in the URL.');
     }
-    return () => clearInterval(timer);
-  }, [countdown]);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (countdown > 0) return;
-
-    setUiState({ isLoading: true, error: null, success: null });
-
-    try {
-      await authService.sendVerificationEmail();
-
-      setUiState({
-        isLoading: false,
-        error: null,
-        success: "Verification email sent successfully! Please check your inbox.",
-      });
-      
-      setCountdown(60); 
-    } catch (err) {
-      setUiState({
-        isLoading: false,
-        error: err?.message || "Something went wrong. Please try again later.",
-        success: null,
-      });
-    }
-  };
+  }, [token, navigate, dispatch]);
 
   return (
-    <div className="flex min-h-[80vh] items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md space-y-8 rounded-2xl bg-white p-10 shadow-xl border border-gray-100">
+    <div className="flex min-h-[70vh] items-center justify-center px-4">
+      <div className="w-full max-w-md bg-white rounded-3xl p-8 shadow-sm border border-gray-100 text-center">
         
-        <div className="text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-blue-600 mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
-            </svg>
+        {/* LOADING STATE */}
+        {status === 'loading' && (
+          <div className="animate-in fade-in zoom-in duration-300">
+            <div className="mx-auto w-16 h-16 border-4 border-gray-100 border-t-blue-600 rounded-full animate-spin mb-6"></div>
+            <h2 className="text-2xl font-black text-gray-900 mb-2">Verifying Email...</h2>
+            <p className="text-gray-500 text-sm">Please wait while we confirm your email address.</p>
           </div>
-          <h2 className="text-3xl font-bold tracking-tight text-gray-900">Verify Your Email</h2>
-          <p className="mt-3 text-sm text-gray-500">We will send a secure activation link to your registered email address.</p>
-        </div>
-
-        {uiState.error && (
-          <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700 border border-red-100" role="alert">{uiState.error}</div>
-        )}
-        {uiState.success && (
-          <div className="rounded-lg bg-green-50 p-4 text-sm text-green-700 border border-green-100" role="alert">{uiState.success}</div>
         )}
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-center">
-            <span className="text-sm text-gray-500 block mb-1">Sending to:</span>
-            <span className="font-semibold text-gray-900">{user?.email || "your email address"}</span>
+        {/* SUCCESS STATE */}
+        {status === 'success' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="mx-auto w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" className="w-8 h-8">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-black text-gray-900 mb-2">Email Verified Successfully!</h2>
+            <p className="text-gray-500 text-sm mb-6">Your account is now secure. Redirecting you to your profile...</p>
           </div>
+        )}
 
-          <Button type="submit" className="w-full h-11" isLoading={uiState.isLoading} disabled={countdown > 0}>
-            {countdown > 0 ? `Retry in ${countdown}s` : 'Send Verification Email'}
-          </Button>
-        </form>
+        {/* ERROR STATE */}
+        {status === 'error' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="mx-auto w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mb-6">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" className="w-8 h-8">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-black text-gray-900 mb-2">Verification Failed</h2>
+            <p className="text-gray-500 text-sm mb-8">{errorMessage}</p>
+            <Link to="/profile" className="inline-block w-full py-3 bg-gray-100 text-gray-900 font-bold rounded-xl hover:bg-gray-200 transition-colors">
+              Return to Profile
+            </Link>
+          </div>
+        )}
 
-        <div className="text-center">
-          <Link to="/dashboard" className="text-sm font-semibold text-blue-600 hover:text-blue-500 transition-colors">
-            &larr; Back to Dashboard
-          </Link>
-        </div>
       </div>
     </div>
   );
