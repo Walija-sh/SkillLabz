@@ -58,7 +58,7 @@ export default function Home() {
             Save money, earn income, and connect with your local community.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row justify-center gap-4 w-full max-w-md mx-auto">
-            <Button className="px-8 py-3 text-lg w-full sm:w-auto" onClick={() => navigate('/tools')}>
+            <Button className="px-8 py-3 text-lg w-full sm:w-auto" onClick={() => navigate('/browse-tools')}>
               Explore Tools
             </Button>
             
