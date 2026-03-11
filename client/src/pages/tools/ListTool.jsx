@@ -1,13 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux'; // ✅ Hook to get user data from Redux
+import { useSelector } from 'react-redux';
 import Button from '../../components/common/Button';
 import toolService from '../../services/tool.service';
 
 export default function ListTool() {
   const navigate = useNavigate();
-  
-  // ✅ 1. Get the logged-in user's profile data (coordinates/city) from Redux
   const { user } = useSelector((state) => state.auth);
 
   const [formData, setFormData] = useState({
@@ -17,11 +15,11 @@ export default function ListTool() {
     pricePerDay: '',
     depositAmount: '',
     condition: '',
-    city: user?.location?.city || '', // ✅ Pre-fill from profile
-    addressText: '',
     offerSkillSession: false, 
     images: null,
   });
+
+  const [imagePreviews, setImagePreviews] = useState([]);
 
   const [uiState, setUiState] = useState({
     isLoading: false,
@@ -31,35 +29,63 @@ export default function ListTool() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleToggle = () => {
-    setFormData((prev) => ({
-      ...prev,
-      offerSkillSession: !prev.offerSkillSession,
-    }));
+    setFormData((prev) => ({ ...prev, offerSkillSession: !prev.offerSkillSession }));
   };
 
   const handleFileChange = (e) => {
-    setFormData((prev) => ({
-      ...prev,
-      images: e.target.files,
-    }));
+    const selectedFiles = e.target.files;
+    
+    if (selectedFiles && selectedFiles.length > 3) {
+      setUiState((prev) => ({
+        ...prev,
+        error: "You can only upload a maximum of 3 images.",
+      }));
+      e.target.value = null; 
+      setFormData((prev) => ({ ...prev, images: null })); 
+      setImagePreviews([]); 
+      return;
+    }
+
+    setUiState((prev) => ({ ...prev, error: null }));
+    setFormData((prev) => ({ ...prev, images: selectedFiles }));
+
+    if (selectedFiles) {
+      const previews = Array.from(selectedFiles).map((file) => URL.createObjectURL(file));
+      setImagePreviews(previews);
+    } else {
+      setImagePreviews([]);
+    }
   };
+
+  useEffect(() => {
+    return () => {
+      imagePreviews.forEach(url => URL.revokeObjectURL(url));
+    };
+  }, [imagePreviews]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setUiState({ isLoading: true, error: null, success: null });
 
-    // ✅ 2. Validation: Ensure user has a location in their profile
-    if (!user?.location?.coordinates) {
+    // Profile check
+    if (!user?.profileCompleted || !user?.location?.coordinates) {
       setUiState({
         isLoading: false,
-        error: "Profile incomplete! Please set your location in your profile before listing.",
+        error: "Profile incomplete! Please update your address and location in your profile before listing.",
+        success: null,
+      });
+      return;
+    }
+
+    // Strict 3 image check
+    if (formData.images && formData.images.length > 3) {
+      setUiState({
+        isLoading: false,
+        error: "Maximum of 3 images allowed.",
         success: null,
       });
       return;
@@ -73,22 +99,13 @@ export default function ListTool() {
       submitData.append('pricePerDay', Number(formData.pricePerDay));
       submitData.append('depositAmount', Number(formData.depositAmount));
       submitData.append('condition', formData.condition);
-      submitData.append('city', formData.city);
-      submitData.append('addressText', formData.addressText);
       
-      // ✅ 3. DYNAMIC LOCATION: Use the coordinates from the owner's profile
-      // MongoDB stores coordinates as [Longitude, Latitude]
-      const [lng, lat] = user.location.coordinates;
-      submitData.append('lat', lat); 
-      submitData.append('lng', lng);
-
       if (formData.images) {
         Array.from(formData.images).forEach((file) => {
           submitData.append('images', file);
         });
       }
 
-      // API Call
       await toolService.createTool(submitData);
 
       setUiState({
@@ -166,9 +183,11 @@ export default function ListTool() {
                   >
                     <option value="" disabled>Select category</option>
                     <option value="camera">Photography & Camera</option>
-                    <option value="power-tools">Power Tools</option>
-                    <option value="electronics">Electronics</option>
-                    <option value="camping">Camping Gear</option>
+                    <option value="laptop">Laptops & Computers</option>
+                    <option value="tools">Hardware & Tools</option>
+                    <option value="musical_instrument">Musical Instruments</option>
+                    <option value="sports">Sports Equipment</option>
+                    <option value="other">Other / Miscellaneous</option>
                   </select>
                 </div>
 
@@ -226,63 +245,58 @@ export default function ListTool() {
                     required
                   >
                     <option value="" disabled>Select condition</option>
+                    <option value="new">Brand New</option>
                     <option value="like_new">Like New</option>
                     <option value="good">Good</option>
                     <option value="fair">Fair</option>
                   </select>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <div>
-                    <label className="block text-xs font-black text-gray-500 mb-1.5 uppercase">Address*</label>
-                    <input
-                      name="addressText"
-                      type="text"
-                      placeholder="e.g., Gulberg III"
-                      className="w-full rounded-xl bg-gray-50 border border-gray-200 px-4 py-3 text-sm focus:bg-white focus:border-blue-500 focus:outline-none transition-all"
-                      value={formData.addressText}
-                      onChange={handleChange}
-                      disabled={uiState.isLoading}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-black text-gray-500 mb-1.5 uppercase">City*</label>
-                    <input
-                      name="city"
-                      type="text"
-                      className="w-full rounded-xl bg-gray-100 border border-gray-200 px-4 py-3 text-sm text-gray-500 outline-none cursor-not-allowed"
-                      value={formData.city}
-                      readOnly
-                    />
-                  </div>
-                </div>
               </div>
             </div>
 
+            {/* Photos Section */}
             <div>
-              <label className="block text-xs font-black text-gray-500 mb-2 uppercase">Photos*</label>
-              <div className="border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center hover:bg-blue-50 hover:border-blue-300 transition-all cursor-pointer relative">
+              <label className="block text-xs font-black text-gray-500 mb-2 uppercase">Photos* (Upload a maximum of three images at a time)</label>
+              <div className="border-2 border-dashed border-gray-200 rounded-2xl p-6 text-center hover:bg-blue-50 hover:border-blue-300 transition-all cursor-pointer relative min-h-[160px] flex items-center justify-center overflow-hidden">
                 <input 
                   type="file" 
                   multiple 
                   accept="image/*" 
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
                   onChange={handleFileChange}
                   disabled={uiState.isLoading}
                   required
                 />
-                <div className="flex flex-col items-center justify-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 mb-3 text-blue-600">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
-                  </svg>
-                  <span className="text-sm font-bold text-gray-700 mb-1">Upload images</span>
-                  <span className="text-xs text-gray-400 font-medium">PNG, JPG up to 10MB</span>
-                  {formData.images && <span className="mt-3 text-xs font-black text-blue-600 bg-blue-100 px-3 py-1 rounded-full uppercase">{formData.images.length} Files selected</span>}
-                </div>
+                
+                {imagePreviews.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full z-10 pointer-events-none">
+                    {imagePreviews.map((src, index) => (
+                      <div key={index} className="aspect-video w-full rounded-xl overflow-hidden shadow-sm border border-gray-200 bg-white">
+                        <img src={src} alt={`Preview ${index + 1}`} className="w-full h-full object-cover" />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center z-10 pointer-events-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 mb-3 text-blue-600">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+                    </svg>
+                    <span className="text-sm font-bold text-gray-700 mb-1">Upload images</span>
+                    <span className="text-xs text-gray-400 font-medium">PNG, JPG up to 10MB. Max 3 files.</span>
+                  </div>
+                )}
               </div>
+
+              {formData.images && (
+                <div className="mt-3 flex justify-center">
+                  <span className="text-xs font-black text-blue-600 bg-blue-100 px-3 py-1 rounded-full uppercase tracking-widest">
+                    {formData.images.length} / 3 Files Selected
+                  </span>
+                </div>
+              )}
             </div>
 
+            {/* Offer Skill Session Toggle */}
             <div className="bg-blue-600 rounded-2xl p-5 flex items-center justify-between shadow-lg shadow-blue-200">
               <div>
                 <h4 className="font-black text-white text-sm uppercase">Offer Skill Session</h4>
@@ -302,10 +316,13 @@ export default function ListTool() {
               </button>
             </div>
 
+            {/* ✅ USING YOUR REUSABLE BUTTON COMPONENT HERE */}
             <div className="flex flex-col sm:flex-row gap-4 pt-2">
               <Button 
                 type="button" 
-                className="w-full sm:w-1/2 py-4 bg-white text-gray-700 border border-gray-200 font-black uppercase tracking-tight"
+                variant="secondary" 
+                size="lg"
+                className="w-full sm:w-1/2 uppercase tracking-wide font-bold"
                 onClick={() => navigate(-1)}
                 disabled={uiState.isLoading}
               >
@@ -313,7 +330,9 @@ export default function ListTool() {
               </Button>
               <Button 
                 type="submit" 
-                className="w-full sm:w-1/2 py-4 bg-blue-600 text-white font-black uppercase tracking-tight shadow-xl shadow-blue-200" 
+                variant="primary" 
+                size="lg"
+                className="w-full sm:w-1/2 uppercase tracking-wide font-bold shadow-lg shadow-blue-200" 
                 isLoading={uiState.isLoading}
               >
                 List My Tool
