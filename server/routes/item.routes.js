@@ -27,7 +27,7 @@ ItemRouter.get("/:id", getSingleItem);
 ItemRouter.post(
   "/",
   protect,
-  upload.array("images", 5), // max 5 images
+  upload.array("images", 3), // max 5 images
   createItem
 );
 

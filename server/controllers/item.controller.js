@@ -7,50 +7,46 @@ import buildItemFilters from "../utils/buildItemFilters.js";
 // -------------------------
 // CREATE ITEM
 // -------------------------
+
 export const createItem = catchAsync(async (req, res, next) => {
-  const {
-    title,
-    description,
-    category,
-    condition,
-    pricePerDay,
-    depositAmount,
-    city,
-    addressText,
-    lat,
-    lng
-  } = req.body;
+  const { title, description, category, condition, pricePerDay, depositAmount } = req.body;
 
-  if (!req.user.isEmailVerified) {
-  return next(new AppError("Please verify your email before listing items", 403));
-}
-if (!req.user.profileCompleted) {
-  return next(new AppError("Complete your profile before listing items", 403));
-}
-const existingItemsCount = await Item.countDocuments({
-  owner: req.user._id
-});
+  // --- Validate basic user conditions ---
+  if (!req.user.isEmailVerified)
+    return next(new AppError("Please verify your email before listing items", 403));
 
-if (
-  req.user.membershipType === "free" &&
-  existingItemsCount >= 3
-) {
-  return next(new AppError("Free users can only list 3 items", 403));
-}
+  if (!req.user.profileCompleted)
+    return next(new AppError("Complete your profile before listing items", 403));
 
-  if (!lat || !lng) {
-    return next(new AppError("Location coordinates required", 400));
+  // --- Validate user location/address from profile ---
+  if (
+    !req.user.location ||
+    !req.user.location.coordinates ||
+    req.user.location.coordinates.length !== 2 ||
+    !req.user.location.addressText
+  ) {
+    return next(new AppError("User location or address not set. Complete your profile first.", 400));
   }
 
+  // --- Free user listing limit ---
+  if (req.user.membershipType === "free") {
+    const existingItemsCount = await Item.countDocuments({ owner: req.user._id });
+    if (existingItemsCount >= 3) {
+      return next(new AppError("Free users can only list 3 items. Upgrade to premium to list more.", 403));
+    }
+  }
+
+  // --- Validate images ---
   if (!req.files || req.files.length === 0) {
     return next(new AppError("At least one image is required", 400));
   }
 
   const images = req.files.map(file => ({
-    public_id: file.filename,   // from CloudinaryStorage
-    url: file.path              // secure_url
+    public_id: file.filename,
+    url: file.path
   }));
 
+  // --- Create the item using profile location/address ---
   const item = await Item.create({
     title,
     description,
@@ -62,9 +58,9 @@ if (
     images,
     location: {
       type: "Point",
-      coordinates: [lng, lat],
-      city,
-      addressText
+      coordinates: req.user.location.coordinates,
+      city: req.user.location.city,
+      addressText: req.user.location.addressText
     }
   });
 
@@ -73,7 +69,6 @@ if (
     item
   });
 });
-
 
 // -------------------------
 // GET ALL ITEMS (FILTER + PAGINATION)
