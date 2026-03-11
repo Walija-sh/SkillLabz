@@ -11,6 +11,10 @@ import VerifyEmail from './pages/auth/VerifyEmail';
 import ListTool from './pages/tools/ListTool'; 
 import CompleteProfile from './pages/profile/CompleteProfile';
 import Profile from './pages/profile/Profile'; 
+import BrowseTools from './pages/tools/BrowseTools';
+import SingleTool from './pages/tools/SingleTool'; 
+import Dashboard from './pages/profile/Dashboard'; // <-- Newly added Dashboard import
+import EditTool from './pages/tools/EditTool';
 import ProtectedRoute from './components/common/ProtectedRoute'; 
 
 const App = () => {
@@ -67,10 +71,21 @@ const App = () => {
         <Route path="register" element={<Register />} />
         <Route path="login" element={<Login />} />
         <Route path="verify-email/:token" element={<VerifyEmail />} />
+        <Route path="browse-tools" element={<BrowseTools />} />
+        <Route path="tools/:id" element={<SingleTool />} />
         
         {/* ==========================================
             PROTECTED ROUTES
         ========================================== */}
+        <Route 
+          path="dashboard" 
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } 
+        />
+
         <Route 
           path="list-tool" 
           element={
@@ -97,6 +112,16 @@ const App = () => {
             </ProtectedRoute>
           } 
         />
+
+         <Route 
+            path="edit-tool/:id" 
+            element={
+              <ProtectedRoute>
+                <EditTool />
+              </ProtectedRoute>
+            } 
+          /> 
+
       </Route>
     </Routes>
   );

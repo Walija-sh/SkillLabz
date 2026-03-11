@@ -50,7 +50,7 @@ export default function Register() {
 
         // 3. Redirect directly to the secure Dashboard after a brief delay
         setTimeout(() => {
-          navigate('/home'); 
+          navigate('/'); 
         }, 1500);
       }
       

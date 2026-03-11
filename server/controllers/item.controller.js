@@ -3,6 +3,7 @@ import catchAsync from "../utils/catchAsync.js";
 import AppError from "../utils/appError.js";
 import cloudinary from "../config/cloudinary.js";
 import buildItemFilters from "../utils/buildItemFilters.js";
+import Rental from "../models/Rental.js";
 
 // -------------------------
 // CREATE ITEM
@@ -132,12 +133,20 @@ export const updateItem = catchAsync(async (req, res, next) => {
     return next(new AppError("Not authorized", 403));
   }
 
-  // If new images uploaded → replace old ones
+  // 1. Check for images the user wants to KEEP (filtering out deleted ones)
+  if (req.body.keptImages) {
+    const keptIds = JSON.parse(req.body.keptImages);
+    item.images = item.images.filter(img => keptIds.includes(img.public_id));
+    delete req.body.keptImages; // Remove from body so Object.assign doesn't use it
+  }
+
+  // 2. If new images uploaded → ADD them to the existing ones instead of replacing
   if (req.files && req.files.length > 0) {
-    item.images = req.files.map(file => ({
+    const newUploads = req.files.map(file => ({
       public_id: file.filename,
       url: file.path
     }));
+    item.images = [...item.images, ...newUploads];
   }
 
   Object.assign(item, req.body);

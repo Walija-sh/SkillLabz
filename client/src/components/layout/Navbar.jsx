@@ -26,7 +26,7 @@ export default function Navbar() {
   ];
 
   const privateNavigation = [
-    { name: 'Browse Tools', href: '/tools' },
+    { name: 'Browse Tools', href: '/browse-tools' },
     { name: 'List Your Tool', href: '/list-tool' },
     { name: 'My Rentals', href: '/rentals' },
     { name: 'Owner Dashboard', href: '/dashboard' },
