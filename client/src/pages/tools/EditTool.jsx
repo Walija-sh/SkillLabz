@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import toolService from '../../services/tool.service';
+import Button from '../../components/common/Button'; // ✅ Imported your reusable Button
 
 export default function EditTool() {
   const { id } = useParams();
@@ -23,11 +24,12 @@ export default function EditTool() {
   });
 
   // --- IMAGE MANAGEMENT STATE ---
-  const [existingImages, setExistingImages] = useState([]); // Images currently in DB
-  const [newImageFiles, setNewImageFiles] = useState([]);   // Actual File objects for upload
-  const [newImagePreviews, setNewImagePreviews] = useState([]); // Base64 strings for UI preview
+  const [existingImages, setExistingImages] = useState([]); 
+  const [newImageFiles, setNewImageFiles] = useState([]);   
+  const [newImagePreviews, setNewImagePreviews] = useState([]); 
 
-  const MAX_IMAGES = 8;
+  // ✅ Synced with the upload.array("images", 5) limit from your backend routes
+  const MAX_IMAGES = 5; 
   const totalCurrentImages = existingImages.length + newImageFiles.length;
 
   // Fetch the tool data when the page loads
@@ -70,7 +72,7 @@ export default function EditTool() {
     const files = Array.from(e.target.files);
     setError(null);
 
-    // Validate max 8 images
+    // Validate max images
     if (totalCurrentImages + files.length > MAX_IMAGES) {
       setError(`You can only have a maximum of ${MAX_IMAGES} images. Space left: ${MAX_IMAGES - totalCurrentImages}.`);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -124,11 +126,9 @@ export default function EditTool() {
       updateData.append('pricePerDay', formData.pricePerDay);
       updateData.append('depositAmount', formData.depositAmount);
 
-      // ✅ THE CRITICAL SYNC: Tell the backend exactly which existing images to keep
       const keptImageIds = existingImages.map(img => img.public_id);
       updateData.append('keptImages', JSON.stringify(keptImageIds));
 
-      // Append new images for upload
       if (newImageFiles.length > 0) {
         newImageFiles.forEach((file) => {
           updateData.append('images', file);
@@ -187,24 +187,25 @@ export default function EditTool() {
           <input type="text" name="title" value={formData.title} onChange={handleChange} required className="w-full rounded-xl border border-gray-200 p-3 outline-none focus:ring-2 focus:ring-blue-600 bg-gray-50 transition-all" />
         </div>
 
-        {/* Category & Condition */}
+        {/* ✅ SYNced Category & Condition Dropdowns */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2">Category</label>
             <select name="category" value={formData.category} onChange={handleChange} required className="w-full rounded-xl border border-gray-200 p-3 outline-none focus:ring-2 focus:ring-blue-600 bg-gray-50 transition-all">
-              <option value="">Select Category</option>
-              <option value="power-tools">Power Tools</option>
-              <option value="hand-tools">Hand Tools</option>
-              <option value="electronics">Electronics</option>
-              <option value="camera">Camera & Gear</option>
-              <option value="camping">Camping</option>
+              <option value="" disabled>Select Category</option>
+              <option value="camera">Photography & Camera</option>
+              <option value="laptop">Laptops & Computers</option>
+              <option value="tools">Hardware & Tools</option>
+              <option value="musical_instrument">Musical Instruments</option>
+              <option value="sports">Sports Equipment</option>
+              <option value="other">Other / Miscellaneous</option>
             </select>
           </div>
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2">Condition</label>
             <select name="condition" value={formData.condition} onChange={handleChange} required className="w-full rounded-xl border border-gray-200 p-3 outline-none focus:ring-2 focus:ring-blue-600 bg-gray-50 transition-all">
-              <option value="">Select Condition</option>
-              <option value="new">New</option>
+              <option value="" disabled>Select Condition</option>
+              <option value="new">Brand New</option>
               <option value="like_new">Like New</option>
               <option value="good">Good</option>
               <option value="fair">Fair</option>
@@ -295,25 +296,16 @@ export default function EditTool() {
           />
         </div>
 
-        {/* Submit Button */}
+        {/* ✅ REUSABLE BUTTON: Submit */}
         <div className="pt-6 border-t border-gray-100">
-          <button 
+          <Button 
             type="submit" 
-            disabled={saving}
-            className="w-full py-3.5 bg-blue-600 text-white rounded-xl text-base font-black hover:bg-blue-700 transition-all shadow-md shadow-blue-200 disabled:opacity-70 disabled:cursor-not-allowed flex justify-center items-center gap-2"
+            variant="primary"
+            isLoading={saving}
+            className="!w-full !py-3.5 !rounded-xl text-base font-black shadow-md shadow-blue-200 gap-2"
           >
-            {saving ? (
-              <>
-                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Saving Changes...
-              </>
-            ) : (
-              'Save Updates'
-            )}
-          </button>
+            Save Updates
+          </Button>
         </div>
 
       </form>
