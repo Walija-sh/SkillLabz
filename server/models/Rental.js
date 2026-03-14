@@ -45,8 +45,7 @@ const RentalSchema = new mongoose.Schema(
   },
 
   // -------------------------
-  // PRICE SNAPSHOT
-  // (locked at booking time)
+  // PRICE SNAPSHOT (Historical Price Locking)
   // -------------------------
   pricePerDay: {
     type: Number,
@@ -58,6 +57,17 @@ const RentalSchema = new mongoose.Schema(
     type: Number,
     default: 0,
     min: [0, "Deposit cannot be negative"]
+  },
+
+  // ✅ Added skill session snapshotting
+  includesSkillSession: {
+    type: Boolean,
+    default: false
+  },
+
+  skillSessionPrice: {
+    type: Number,
+    default: 0
   },
 
   totalPrice: {
@@ -104,13 +114,12 @@ RentalSchema.index({ owner: 1, rentalStatus: 1 });
 // hooks
 // validate date
 RentalSchema.pre("validate", function () {
-
   if (this.startDate >= this.endDate) {
-    return new AppError("End date must be after start date",400);
+    return new AppError("End date must be after start date", 400);
   }
 });
 
-// cal rental duration and total price
+// ✅ Updated: Calculate rental duration and total price including skill session
 RentalSchema.pre("save", function () {
   if (!this.startDate || !this.endDate) return;
 
@@ -118,9 +127,16 @@ RentalSchema.pre("save", function () {
   this.rentalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
   if (this.pricePerDay && this.rentalDays) {
-    this.totalPrice = this.pricePerDay * this.rentalDays;
+    // Base Price Calculation
+    const basePrice = this.pricePerDay * this.rentalDays;
+    
+    // Add Skill Session Price if selected
+    const sessionCost = this.includesSkillSession ? this.skillSessionPrice : 0;
+
+    this.totalPrice = basePrice + sessionCost;
   }
 });
+
 // check if rental can be approved
 RentalSchema.methods.canBeApproved = function () {
   return this.rentalStatus === "pending";
@@ -142,12 +158,3 @@ RentalSchema.methods.canCancel = function () {
 const Rental = mongoose.models.Rental || mongoose.model("Rental", RentalSchema);
 
 export default Rental;
-
-
-// toring pricePerDay and depositAmount inside Rental is not duplication, it is historical price locking.
-
-// If item price changes later:
-
-// Item pricePerDay: 2000 → 2500
-
-// Old rentals should still show 2000, otherwise invoices become wrong. Real marketplaces always snapshot pricing inside the transaction record.
