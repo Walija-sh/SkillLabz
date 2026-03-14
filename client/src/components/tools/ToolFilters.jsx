@@ -89,11 +89,14 @@ export default function ToolFilters({
             onChange={onFilterChange}
             className="w-full rounded-xl border border-gray-200 p-2.5 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-600 bg-gray-50 transition-all"
           >
+            {/* ✅ FIXED CATEGORIES TO MATCH BACKEND ENUMS */}
             <option value="">All Categories</option>
             <option value="camera">Photography & Camera</option>
-            <option value="power-tools">Power Tools</option>
-            <option value="electronics">Electronics</option>
-            <option value="camping">Camping Gear</option>
+            <option value="laptop">Laptops & Computers</option>
+            <option value="tools">Hardware & Tools</option>
+            <option value="musical_instrument">Musical Instruments</option>
+            <option value="sports">Sports Equipment</option>
+            <option value="other">Other / Miscellaneous</option>
           </select>
         </div>
 
@@ -142,15 +145,17 @@ export default function ToolFilters({
         <div className="flex flex-col gap-2 mt-6 border-t border-gray-100 pt-6">
           <Button 
             type="button" 
+            variant="primary"
             onClick={onApply}
-            className="w-full py-3 bg-blue-600 text-white font-black uppercase tracking-tighter shadow-lg shadow-blue-100"
+            className="w-full! py-3! rounded-xl! font-black uppercase tracking-tighter shadow-lg shadow-blue-100"
           >
             Apply Filters
           </Button>
           <Button 
             type="button" 
+            variant="outline"
             onClick={onClear}
-            className="w-full py-3 border border-gray-200 text-gray-500 font-black uppercase tracking-tighter hover:bg-gray-50"
+            className="w-full! py-3! rounded-xl! text-gray-500! border-gray-200! font-black uppercase tracking-tighter hover:bg-gray-50!"
           >
             Clear All
           </Button>
