@@ -10,7 +10,18 @@ import Rental from "../models/Rental.js";
 // -------------------------
 
 export const createItem = catchAsync(async (req, res, next) => {
-  const { title, description, category, condition, pricePerDay, depositAmount } = req.body;
+  // ✅ ADDED: skill session fields
+  const { 
+    title, 
+    description, 
+    category, 
+    condition, 
+    pricePerDay, 
+    depositAmount,
+    offerSkillSession,
+    skillSessionPrice,
+    skillSessionDescription
+  } = req.body;
 
   // --- Validate basic user conditions ---
   if (!req.user.isEmailVerified)
@@ -57,6 +68,10 @@ export const createItem = catchAsync(async (req, res, next) => {
     depositAmount,
     owner: req.user._id,
     images,
+    // ✅ ADDED: Type conversion for incoming form data
+    offerSkillSession: offerSkillSession === 'true',
+    skillSessionPrice: skillSessionPrice ? Number(skillSessionPrice) : 0,
+    skillSessionDescription: skillSessionDescription || "",
     location: {
       type: "Point",
       coordinates: req.user.location.coordinates,
@@ -147,6 +162,14 @@ export const updateItem = catchAsync(async (req, res, next) => {
       url: file.path
     }));
     item.images = [...item.images, ...newUploads];
+  }
+
+  // ✅ ADDED: Explicitly handle skill session field types during updates
+  if (req.body.offerSkillSession !== undefined) {
+    req.body.offerSkillSession = req.body.offerSkillSession === 'true';
+  }
+  if (req.body.skillSessionPrice !== undefined) {
+    req.body.skillSessionPrice = Number(req.body.skillSessionPrice);
   }
 
   Object.assign(item, req.body);
