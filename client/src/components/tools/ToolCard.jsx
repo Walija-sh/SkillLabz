@@ -14,11 +14,6 @@ export default function ToolCard({ item }) {
           alt={item.title} 
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />
-        
-        {/* Availability Badge - Scaled down for mobile */}
-        <div className="absolute top-2 right-2 px-2 py-0.5 bg-green-500 text-white rounded-full text-[8px] sm:text-[10px] font-black uppercase tracking-widest shadow-sm">
-          ● Available
-        </div>
       </div>
 
       {/* Content Container - Padding reduced for mobile (p-3) */}

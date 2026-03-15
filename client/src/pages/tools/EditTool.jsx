@@ -302,7 +302,7 @@ export default function EditTool() {
             type="submit" 
             variant="primary"
             isLoading={saving}
-            className="!w-full !py-3.5 !rounded-xl text-base font-black shadow-md shadow-blue-200 gap-2"
+            className="w-full! py-3.5! rounded-xl! text-base font-black shadow-md shadow-blue-200 gap-2"
           >
             Save Updates
           </Button>
