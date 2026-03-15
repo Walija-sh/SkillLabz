@@ -4,7 +4,7 @@ import toolService from '../../services/tool.service';
 import Button from '../../components/common/Button';
 
 export default function SingleTool() {
-  const { id } = useParams(); // Grabs the item ID from the URL
+  const { id } = useParams();
   const navigate = useNavigate();
   
   const [item, setItem] = useState(null);
@@ -64,7 +64,6 @@ export default function SingleTool() {
           
           {/* Left Column: Image Gallery */}
           <div className="p-6 lg:p-8 bg-gray-50 border-r border-gray-100">
-            {/* Main Image */}
             <div className="aspect-w-4 aspect-h-3 rounded-2xl overflow-hidden bg-gray-200 mb-4 h-80 sm:h-96">
               <img 
                 src={item.images[activeImage]?.url || 'https://via.placeholder.com/800x600?text=No+Image'} 
@@ -73,7 +72,6 @@ export default function SingleTool() {
               />
             </div>
             
-            {/* Thumbnails */}
             {item.images && item.images.length > 1 && (
               <div className="flex gap-3 overflow-x-auto pb-2">
                 {item.images.map((img, index) => (
@@ -114,7 +112,7 @@ export default function SingleTool() {
             </div>
 
             {/* Price Box */}
-            <div className="bg-gray-50 rounded-2xl p-6 mb-8 border border-gray-100">
+            <div className="bg-gray-50 rounded-2xl p-6 mb-6 border border-gray-100">
               <div className="flex items-end mb-2">
                 <span className="text-4xl font-black text-gray-900">Rs {item.pricePerDay}</span>
                 <span className="text-gray-500 font-medium ml-2 mb-1">/ day</span>
@@ -123,6 +121,38 @@ export default function SingleTool() {
                 Security Deposit: <span className="text-gray-900 font-bold">Rs {item.depositAmount}</span>
               </p>
             </div>
+
+            {/* ✅ NEW: Skill Session Section */}
+            {item.offerSkillSession && (
+              <div className="mb-8 p-6 bg-blue-50 border border-blue-100 rounded-3xl relative overflow-hidden group">
+                {/* Decorative Icon Background */}
+                <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:scale-110 transition-transform duration-500">
+                   <svg xmlns="http://www.w3.org/2000/svg" className="w-24 h-24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5S19.832 5.477 21 6.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                   </svg>
+                </div>
+
+                <div className="relative z-10">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="bg-blue-600 p-1.5 rounded-lg">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5S19.832 5.477 21 6.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                      </svg>
+                    </div>
+                    <h4 className="text-blue-900 font-black uppercase text-xs tracking-widest">Skill Session Available</h4>
+                  </div>
+                  
+                  <p className="text-blue-800/80 text-sm font-medium leading-relaxed mb-4">
+                    {item.skillSessionDescription || `Learn how to use this tool properly from ${item.owner?.username}. Perfect for first-time users who want hands-on guidance.`}
+                  </p>
+                  
+                  <div className="flex items-center justify-between pt-4 border-t border-blue-200/50">
+                    <span className="text-blue-900/60 text-[10px] font-black uppercase tracking-tighter">Additional Cost</span>
+                    <span className="text-blue-600 font-black text-lg">Rs. {item.skillSessionPrice}</span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Description */}
             <div className="mb-8 flex-1">
@@ -152,10 +182,9 @@ export default function SingleTool() {
                 </div>
               </div>
 
-              {/* Rent Action */}
               <Button 
                 className="w-full py-4 bg-blue-600 text-white hover:bg-blue-700 text-lg font-black shadow-lg shadow-blue-200 transition-all rounded-xl"
-                onClick={() => alert("Rental Request logic coming next!")}
+                onClick={() => navigate(`/tools/${item._id}/rent`)}
               >
                 Request to Rent
               </Button>

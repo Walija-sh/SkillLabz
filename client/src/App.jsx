@@ -15,6 +15,8 @@ import BrowseTools from './pages/tools/BrowseTools';
 import SingleTool from './pages/tools/SingleTool'; 
 import Dashboard from './pages/profile/Dashboard'; // <-- Newly added Dashboard import
 import EditTool from './pages/tools/EditTool';
+import RequestRental from './pages/rentals/RequestRental';
+import MyRentals from './pages/rentals/MyRentals';
 import ProtectedRoute from './components/common/ProtectedRoute'; 
 
 const App = () => {
@@ -73,6 +75,8 @@ const App = () => {
         <Route path="verify-email/:token" element={<VerifyEmail />} />
         <Route path="browse-tools" element={<BrowseTools />} />
         <Route path="tools/:id" element={<SingleTool />} />
+        <Route path="/tools/:id/rent" element={<RequestRental />} />
+        <Route path="/my-rentals" element={<MyRentals />} />
         
         {/* ==========================================
             PROTECTED ROUTES

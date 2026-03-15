@@ -38,7 +38,7 @@ const ItemSchema = new mongoose.Schema(
   },
 
   // -------------------------
-  // PRICING
+  // PRICING & SKILL SESSION
   // -------------------------
   pricePerDay: {
     type: Number,
@@ -49,6 +49,24 @@ const ItemSchema = new mongoose.Schema(
   depositAmount: {
     type: Number,
     default: 0
+  },
+
+  // ✅ Added skill session support
+  offerSkillSession: {
+    type: Boolean,
+    default: false
+  },
+
+  skillSessionPrice: {
+    type: Number,
+    default: 0,
+    min: [0, "Skill session price cannot be negative"]
+  },
+
+  skillSessionDescription: {
+    type: String,
+    maxlength: [500, "Description cannot exceed 500 characters"],
+    trim: true
   },
 
   // -------------------------
@@ -97,7 +115,7 @@ const ItemSchema = new mongoose.Schema(
 
   isApproved: {
     type: Boolean,
-    default: true // later you can make admin approval required
+    default: true
   }
 
 },
