@@ -1,10 +1,17 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from "react-router-dom";
 import rentalService from '../../services/rental.service';
+import reviewService from "../../services/review.service";
+import Stars from "../../components/reviews/Stars";
 
 export default function MyRentals() {
   const [rentals, setRentals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [reviewModal, setReviewModal] = useState({ open: false, rental: null });
+  const [reviewForm, setReviewForm] = useState({ rating: 5, comment: "" });
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [reviewMessage, setReviewMessage] = useState({ type: "", text: "" });
   
   // Tabs: 'pending', 'active', 'completed'
   // Note: We'll map "approved" to the "active" tab so users know they need to pick it up!
@@ -24,6 +31,48 @@ export default function MyRentals() {
 
     fetchMyRentals();
   }, []);
+
+  const openReviewModal = (rental) => {
+    setReviewMessage({ type: "", text: "" });
+    setReviewForm({ rating: 5, comment: "" });
+    setReviewModal({ open: true, rental });
+  };
+
+  const closeReviewModal = () => {
+    setReviewModal({ open: false, rental: null });
+    setReviewMessage({ type: "", text: "" });
+    setIsSubmittingReview(false);
+  };
+
+  const submitReview = async () => {
+    const rental = reviewModal.rental;
+    if (!rental?._id) return;
+
+    // For "My Rentals" (renter perspective) you review the owner
+    const reviewedUserId = rental.owner;
+    if (!reviewedUserId) {
+      setReviewMessage({ type: "error", text: "Owner not found for this rental." });
+      return;
+    }
+
+    setIsSubmittingReview(true);
+    setReviewMessage({ type: "", text: "" });
+    try {
+      await reviewService.createReview({
+        rentalId: rental._id,
+        reviewedUserId,
+        rating: Number(reviewForm.rating),
+        comment: reviewForm.comment
+      });
+      setReviewMessage({ type: "success", text: "Review submitted successfully." });
+      // keep modal open briefly so user sees confirmation
+      setTimeout(() => closeReviewModal(), 700);
+    } catch (err) {
+      setReviewMessage({ type: "error", text: err?.message || "Failed to submit review." });
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
 
   // Filter logic based on the selected tab
   const filteredRentals = rentals.filter(rental => {
@@ -178,6 +227,24 @@ export default function MyRentals() {
                 <button className="flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-900 border border-gray-200 px-5 py-2.5 rounded-xl text-sm font-bold transition-colors">
                   Contact Owner
                 </button>
+
+                {/* Reviews (only after completion) */}
+                {rental.rentalStatus === "completed" && (
+                  <>
+                    <Link
+                      to={rental.owner ? `/users/${rental.owner}` : "#"}
+                      className="flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-900 border border-gray-200 px-5 py-2.5 rounded-xl text-sm font-bold transition-colors"
+                    >
+                      View Owner Profile
+                    </Link>
+                    <button
+                      onClick={() => openReviewModal(rental)}
+                      className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white px-5 py-2.5 rounded-xl text-sm font-black transition-colors uppercase tracking-widest"
+                    >
+                      Leave Review
+                    </button>
+                  </>
+                )}
                 
                 <button className="flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-900 border border-gray-200 px-5 py-2.5 rounded-xl text-sm font-bold transition-colors">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 text-gray-500">
@@ -191,6 +258,87 @@ export default function MyRentals() {
           ))
         )}
       </div>
+
+      {/* Review modal */}
+      {reviewModal.open && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-md">
+          <div className="bg-white rounded-[2.5rem] p-8 max-w-md w-full shadow-2xl border border-gray-100">
+            <div className="flex items-start justify-between gap-4 mb-6">
+              <div>
+                <h3 className="text-2xl font-black text-gray-900 uppercase tracking-tight">Leave a Review</h3>
+                <p className="text-gray-500 font-medium mt-1">
+                  For: <span className="font-bold text-gray-900">{reviewModal.rental?.item?.title || "Rental"}</span>
+                </p>
+              </div>
+              <button onClick={closeReviewModal} className="p-2 rounded-xl hover:bg-gray-50 text-gray-500">
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {reviewMessage.text && (
+              <div
+                className={`mb-5 p-4 rounded-2xl border font-bold ${
+                  reviewMessage.type === "success"
+                    ? "bg-green-50 text-green-700 border-green-100"
+                    : "bg-red-50 text-red-700 border-red-100"
+                }`}
+              >
+                {reviewMessage.text}
+              </div>
+            )}
+
+            <div className="space-y-5">
+              <div>
+                <p className="text-xs font-black uppercase tracking-widest text-gray-400 mb-2">Rating</p>
+                <div className="flex items-center gap-3">
+                  <select
+                    value={reviewForm.rating}
+                    onChange={(e) => setReviewForm((p) => ({ ...p, rating: e.target.value }))}
+                    className="w-32 px-4 py-3 rounded-2xl border-2 border-gray-100 bg-white focus:border-blue-600 outline-none font-bold"
+                  >
+                    {[5, 4, 3, 2, 1].map((v) => (
+                      <option key={v} value={v}>
+                        {v}
+                      </option>
+                    ))}
+                  </select>
+                  <Stars value={Number(reviewForm.rating)} />
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-black uppercase tracking-widest text-gray-400 mb-2">Comment (optional)</p>
+                <textarea
+                  value={reviewForm.comment}
+                  onChange={(e) => setReviewForm((p) => ({ ...p, comment: e.target.value }))}
+                  rows={4}
+                  placeholder="Share your experience..."
+                  className="w-full px-4 py-3 rounded-2xl border-2 border-gray-100 bg-white focus:border-blue-600 outline-none font-medium resize-none"
+                />
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <button
+                  disabled={isSubmittingReview}
+                  onClick={submitReview}
+                  className="flex-1 py-4 bg-gray-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-gray-800 disabled:opacity-60"
+                >
+                  {isSubmittingReview ? "Submitting..." : "Submit Review"}
+                </button>
+                <button
+                  disabled={isSubmittingReview}
+                  onClick={closeReviewModal}
+                  className="flex-1 py-4 bg-gray-100 text-gray-600 rounded-2xl font-black uppercase tracking-widest hover:bg-gray-200 disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

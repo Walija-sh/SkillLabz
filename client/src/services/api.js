@@ -1,8 +1,30 @@
 import axios from 'axios';
 
+const normalizeApiBaseUrl = (rawBaseUrl) => {
+  if (!rawBaseUrl) return null;
+  const trimmed = String(rawBaseUrl).trim().replace(/\/+$/, "");
+  return trimmed.endsWith("/api") ? trimmed : `${trimmed}/api`;
+};
+
+const resolvedBaseURL = (() => {
+  // Prefer explicit per-environment URLs
+  const envUrl = import.meta.env.DEV
+    ? normalizeApiBaseUrl(import.meta.env.VITE_API_URL_DEV)
+    : normalizeApiBaseUrl(import.meta.env.VITE_API_URL_PROD);
+
+  if (envUrl) return envUrl;
+
+  // Backwards-compatible fallback
+  const legacy = normalizeApiBaseUrl(import.meta.env.VITE_API_URL);
+  if (legacy) return legacy;
+
+  if (import.meta.env.DEV) return "http://localhost:3100/api";
+  return "https://skill-labz-backend.vercel.app/api";
+})();
+
 const apiClient = axios.create({
   // Uses your local .env file during development, and falls back to Vercel for production
-  baseURL: import.meta.env.VITE_API_URL || 'https://skill-labz-backend.vercel.app/api',
+  baseURL: resolvedBaseURL,
   headers: {
     'Content-Type': 'application/json',
   },

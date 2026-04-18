@@ -8,6 +8,8 @@ import AuthRouter from './routes/auth.routes.js';
 import VerificationRouter from './routes/verification.routes.js';
 import ItemRouter from './routes/item.routes.js';
 import RentalRouter from './routes/rental.routes.js';
+import UserRouter from "./routes/user.routes.js";
+import ReviewRouter from "./routes/review.routes.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -27,9 +29,11 @@ app.use('/api/auth',AuthRouter);
 app.use("/api/verification", VerificationRouter);
 app.use("/api/items", ItemRouter);
 app.use("/api/rentals", RentalRouter);
+app.use("/api/users", UserRouter);
+app.use("/api/reviews", ReviewRouter);
 // test route
 
-app.get('/', (req, res) => res.send('SkillLabz API Running'));
+app.get('/api', (req, res) => res.send('SkillLabz API Running'));
 
 
 // global error handler

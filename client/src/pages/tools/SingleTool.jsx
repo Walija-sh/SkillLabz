@@ -175,7 +175,7 @@ export default function SingleTool() {
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">Listed by</p>
-                    <Link to={`/profile/${item.owner?._id}`} className="text-base font-bold text-gray-900 hover:text-blue-600 transition-colors">
+                    <Link to={`/users/${item.owner?._id}`} className="text-base font-bold text-gray-900 hover:text-blue-600 transition-colors">
                       {item.owner?.username}
                     </Link>
                   </div>
