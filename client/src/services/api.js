@@ -7,19 +7,17 @@ const normalizeApiBaseUrl = (rawBaseUrl) => {
 };
 
 const resolvedBaseURL = (() => {
-  // Prefer explicit per-environment URLs
-  const envUrl = import.meta.env.DEV
-    ? normalizeApiBaseUrl(import.meta.env.VITE_API_URL_DEV)
-    : normalizeApiBaseUrl(import.meta.env.VITE_API_URL_PROD);
+  const rawBaseUrl = import.meta.env.DEV
+    ? import.meta.env.VITE_API_URL_DEV
+    : import.meta.env.VITE_API_URL_PROD;
 
-  if (envUrl) return envUrl;
+  const normalized = normalizeApiBaseUrl(rawBaseUrl);
 
-  // Backwards-compatible fallback
-  const legacy = normalizeApiBaseUrl(import.meta.env.VITE_API_URL);
-  if (legacy) return legacy;
+  if (!normalized) {
+    throw new Error("API base URL is not defined. Check your environment variables.");
+  }
 
-  if (import.meta.env.DEV) return "http://localhost:3100/api";
-  return "https://skill-labz-backend.vercel.app/api";
+  return normalized;
 })();
 
 const apiClient = axios.create({
