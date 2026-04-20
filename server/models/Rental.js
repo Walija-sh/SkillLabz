@@ -101,6 +101,27 @@ const RentalSchema = new mongoose.Schema(
   ownerNote: {
     type: String,
     maxlength: [300, "Note cannot exceed 300 characters"]
+  },
+
+  // -------------------------
+  // OTP VERIFICATION (OPTIONAL)
+  // -------------------------
+  // NOTE: Stored as hash (never return from API). Raw OTP is returned only from generate endpoints.
+  handoverOTP: {
+    type: String,
+    select: false
+  },
+  handoverOTPExpiry: {
+    type: Date,
+    select: false
+  },
+  returnOTP: {
+    type: String,
+    select: false
+  },
+  returnOTPExpiry: {
+    type: Date,
+    select: false
   }
 
 },

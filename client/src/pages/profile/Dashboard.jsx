@@ -15,6 +15,8 @@ export default function Dashboard() {
   const [rentals, setRentals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('tools'); 
+  const [otpByRentalId, setOtpByRentalId] = useState({});
+  const [otpLoading, setOtpLoading] = useState({});
 
   // --- DELETE MODAL STATE ---
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -89,6 +91,25 @@ export default function Dashboard() {
     } catch (err) {
       console.error(`Failed to ${actionType} rental:`, err);
       alert(err.message || `Failed to ${actionType} rental. Ensure dates don't conflict.`);
+    }
+  };
+
+  const handleGenerateOtp = async (type, rentalId) => {
+    setOtpLoading((p) => ({ ...p, [rentalId]: true }));
+    try {
+      const data =
+        type === "handover"
+          ? await rentalService.generateHandoverOtp(rentalId)
+          : await rentalService.generateReturnOtp(rentalId);
+
+      setOtpByRentalId((p) => ({
+        ...p,
+        [rentalId]: { otp: data.otp, expiresAt: data.expiresAt, type }
+      }));
+    } catch (err) {
+      alert(err?.message || "Failed to generate OTP.");
+    } finally {
+      setOtpLoading((p) => ({ ...p, [rentalId]: false }));
     }
   };
 
@@ -270,10 +291,38 @@ export default function Dashboard() {
 
                     {/* Action Buttons for Lifecycle */}
                     {rental.rentalStatus === 'approved' && (
-                      <button onClick={() => handleRentalAction('start', rental._id)} className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-700">Handed Over</button>
+                      <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+                        <button
+                          onClick={() => handleGenerateOtp("handover", rental._id)}
+                          disabled={!!otpLoading[rental._id]}
+                          className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-700 disabled:opacity-60"
+                        >
+                          {otpLoading[rental._id] ? "Generating..." : "Generate Handover OTP"}
+                        </button>
+
+                        {otpByRentalId[rental._id]?.type === "handover" && (
+                          <div className="px-4 py-2 bg-blue-50 text-blue-700 border border-blue-100 rounded-xl text-xs font-black uppercase tracking-widest">
+                            OTP: <span className="text-blue-900">{otpByRentalId[rental._id].otp}</span>
+                          </div>
+                        )}
+                      </div>
                     )}
                     {rental.rentalStatus === 'active' && (
-                      <button onClick={() => handleRentalAction('complete', rental._id)} className="w-full sm:w-auto px-4 py-2 bg-gray-900 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-gray-800">Returned</button>
+                      <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+                        <button
+                          onClick={() => handleGenerateOtp("return", rental._id)}
+                          disabled={!!otpLoading[rental._id]}
+                          className="w-full sm:w-auto px-4 py-2 bg-gray-900 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-gray-800 disabled:opacity-60"
+                        >
+                          {otpLoading[rental._id] ? "Generating..." : "Generate Return OTP"}
+                        </button>
+
+                        {otpByRentalId[rental._id]?.type === "return" && (
+                          <div className="px-4 py-2 bg-gray-50 text-gray-700 border border-gray-100 rounded-xl text-xs font-black uppercase tracking-widest">
+                            OTP: <span className="text-gray-900">{otpByRentalId[rental._id].otp}</span>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>

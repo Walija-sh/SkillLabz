@@ -10,7 +10,11 @@ import {
   approveRental,
   rejectRental,
   startRental,
-  completeRental
+  completeRental,
+  generateHandoverOtp,
+  verifyHandoverOtp,
+  generateReturnOtp,
+  verifyReturnOtp
 } from "../controllers/rental.controller.js";
 
 const RentalRouter = express.Router();
@@ -50,6 +54,14 @@ RentalRouter.patch("/:id/reject", protect, rejectRental);
 
 RentalRouter.patch("/:id/start", protect, startRental);
 RentalRouter.patch("/:id/complete", protect, completeRental);
+
+// -------------------------
+// OTP VERIFICATION (EXTENSION)
+// -------------------------
+RentalRouter.patch("/:id/generate-handover-otp", protect, generateHandoverOtp);
+RentalRouter.patch("/:id/verify-handover-otp", protect, verifyHandoverOtp);
+RentalRouter.patch("/:id/generate-return-otp", protect, generateReturnOtp);
+RentalRouter.patch("/:id/verify-return-otp", protect, verifyReturnOtp);
 
 
 export default RentalRouter;

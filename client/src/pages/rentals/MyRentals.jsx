@@ -12,6 +12,10 @@ export default function MyRentals() {
   const [reviewForm, setReviewForm] = useState({ rating: 5, comment: "" });
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [reviewMessage, setReviewMessage] = useState({ type: "", text: "" });
+  const [otpModal, setOtpModal] = useState({ open: false, rental: null, type: null }); // type: handover|return
+  const [otpValue, setOtpValue] = useState("");
+  const [otpSubmitting, setOtpSubmitting] = useState(false);
+  const [otpMessage, setOtpMessage] = useState({ type: "", text: "" });
   
   // Tabs: 'pending', 'active', 'completed'
   // Note: We'll map "approved" to the "active" tab so users know they need to pick it up!
@@ -71,6 +75,50 @@ export default function MyRentals() {
       setReviewMessage({ type: "error", text: err?.message || "Failed to submit review." });
     } finally {
       setIsSubmittingReview(false);
+    }
+  };
+
+  const openOtpModal = (type, rental) => {
+    setOtpModal({ open: true, rental, type });
+    setOtpValue("");
+    setOtpSubmitting(false);
+    setOtpMessage({ type: "", text: "" });
+  };
+
+  const closeOtpModal = () => {
+    setOtpModal({ open: false, rental: null, type: null });
+    setOtpValue("");
+    setOtpSubmitting(false);
+    setOtpMessage({ type: "", text: "" });
+  };
+
+  const submitOtp = async () => {
+    const rental = otpModal.rental;
+    if (!rental?._id) return;
+    if (!otpValue) {
+      setOtpMessage({ type: "error", text: "OTP is required." });
+      return;
+    }
+
+    setOtpSubmitting(true);
+    setOtpMessage({ type: "", text: "" });
+    try {
+      const updated =
+        otpModal.type === "handover"
+          ? await rentalService.verifyHandoverOtp(rental._id, otpValue)
+          : await rentalService.verifyReturnOtp(rental._id, otpValue);
+
+      // Update local list status immediately
+      setRentals((prev) =>
+        prev.map((r) => (r._id === rental._id ? { ...r, rentalStatus: updated.rental.rentalStatus } : r))
+      );
+
+      setOtpMessage({ type: "success", text: "Verified successfully." });
+      setTimeout(() => closeOtpModal(), 700);
+    } catch (err) {
+      setOtpMessage({ type: "error", text: err?.message || "Failed to verify OTP." });
+    } finally {
+      setOtpSubmitting(false);
     }
   };
 
@@ -205,13 +253,7 @@ export default function MyRentals() {
                     <p className="text-sm font-bold text-gray-900">Rs. {rental.totalPrice}</p>
                   </div>
 
-                  {/* Return OTP (Visual only, based on Figma) */}
-                  {rental.rentalStatus === 'active' && (
-                    <div>
-                      <p className="text-xs text-gray-400 font-medium mb-1">Return OTP</p>
-                      <p className="text-lg font-black text-orange-500 tracking-widest">9127</p>
-                    </div>
-                  )}
+                  {/* OTP verification happens via action buttons below */}
                 </div>
               </div>
 
@@ -227,6 +269,25 @@ export default function MyRentals() {
                 <button className="flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-900 border border-gray-200 px-5 py-2.5 rounded-xl text-sm font-bold transition-colors">
                   Contact Owner
                 </button>
+
+                {/* OTP actions */}
+                {rental.rentalStatus === "approved" && (
+                  <button
+                    onClick={() => openOtpModal("handover", rental)}
+                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-black transition-colors uppercase tracking-widest"
+                  >
+                    Enter Handover OTP
+                  </button>
+                )}
+
+                {rental.rentalStatus === "active" && (
+                  <button
+                    onClick={() => openOtpModal("return", rental)}
+                    className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white px-5 py-2.5 rounded-xl text-sm font-black transition-colors uppercase tracking-widest"
+                  >
+                    Enter Return OTP
+                  </button>
+                )}
 
                 {/* Reviews (only after completion) */}
                 {rental.rentalStatus === "completed" && (
@@ -330,6 +391,73 @@ export default function MyRentals() {
                 <button
                   disabled={isSubmittingReview}
                   onClick={closeReviewModal}
+                  className="flex-1 py-4 bg-gray-100 text-gray-600 rounded-2xl font-black uppercase tracking-widest hover:bg-gray-200 disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* OTP modal */}
+      {otpModal.open && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-md">
+          <div className="bg-white rounded-[2.5rem] p-8 max-w-md w-full shadow-2xl border border-gray-100">
+            <div className="flex items-start justify-between gap-4 mb-6">
+              <div>
+                <h3 className="text-2xl font-black text-gray-900 uppercase tracking-tight">
+                  {otpModal.type === "handover" ? "Verify Handover OTP" : "Verify Return OTP"}
+                </h3>
+                <p className="text-gray-500 font-medium mt-1">
+                  Tool: <span className="font-bold text-gray-900">{otpModal.rental?.item?.title || "Rental"}</span>
+                </p>
+              </div>
+              <button onClick={closeOtpModal} className="p-2 rounded-xl hover:bg-gray-50 text-gray-500">
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {otpMessage.text && (
+              <div
+                className={`mb-5 p-4 rounded-2xl border font-bold ${
+                  otpMessage.type === "success"
+                    ? "bg-green-50 text-green-700 border-green-100"
+                    : "bg-red-50 text-red-700 border-red-100"
+                }`}
+              >
+                {otpMessage.text}
+              </div>
+            )}
+
+            <div className="space-y-5">
+              <div>
+                <p className="text-xs font-black uppercase tracking-widest text-gray-400 mb-2">OTP</p>
+                <input
+                  value={otpValue}
+                  onChange={(e) => setOtpValue(e.target.value)}
+                  placeholder="Enter OTP"
+                  className="w-full px-4 py-3 rounded-2xl border-2 border-gray-100 bg-white focus:border-blue-600 outline-none font-black tracking-widest text-gray-900"
+                />
+                <p className="text-[10px] text-gray-400 font-bold mt-2 uppercase tracking-widest">
+                  Ask the owner for the OTP shown on their dashboard.
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <button
+                  disabled={otpSubmitting}
+                  onClick={submitOtp}
+                  className="flex-1 py-4 bg-gray-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-gray-800 disabled:opacity-60"
+                >
+                  {otpSubmitting ? "Verifying..." : "Verify OTP"}
+                </button>
+                <button
+                  disabled={otpSubmitting}
+                  onClick={closeOtpModal}
                   className="flex-1 py-4 bg-gray-100 text-gray-600 rounded-2xl font-black uppercase tracking-widest hover:bg-gray-200 disabled:opacity-60"
                 >
                   Cancel

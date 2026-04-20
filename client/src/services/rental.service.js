@@ -69,6 +69,45 @@ const rentalService = {
     } catch (error) {
       throw error.response?.data || { message: "Failed to complete rental." };
     }
+  },
+
+  // -------------------------
+  // OTP EXTENSION (Owner generates, renter verifies)
+  // -------------------------
+  generateHandoverOtp: async (id) => {
+    try {
+      const response = await apiClient.patch(`/rentals/${id}/generate-handover-otp`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Failed to generate handover OTP." };
+    }
+  },
+
+  verifyHandoverOtp: async (id, otp) => {
+    try {
+      const response = await apiClient.patch(`/rentals/${id}/verify-handover-otp`, { otp });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Failed to verify handover OTP." };
+    }
+  },
+
+  generateReturnOtp: async (id) => {
+    try {
+      const response = await apiClient.patch(`/rentals/${id}/generate-return-otp`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Failed to generate return OTP." };
+    }
+  },
+
+  verifyReturnOtp: async (id, otp) => {
+    try {
+      const response = await apiClient.patch(`/rentals/${id}/verify-return-otp`, { otp });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Failed to verify return OTP." };
+    }
   }
 };
 
