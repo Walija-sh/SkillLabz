@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import verificationService from '../services/verification.service';
+import { formatDate } from '../utils/dateFormatter';
 
 const Verifications = () => {
   const [requests, setRequests] = useState([]);
@@ -7,30 +8,63 @@ const Verifications = () => {
   const [reason, setReason] = useState('');
   const [loading, setLoading] = useState(true);
 
+
+
+
+
+  const [error, setError] = useState(null);
+
   useEffect(() => { loadRequests(); }, []);
 
   const loadRequests = async () => {
     try {
+      setError(null);
       const res = await verificationService.getPendingRequests();
       setRequests(res.data || []);
-    } catch (err) { alert("Failed to load requests"); }
-    finally { setLoading(false); }
+    } catch (err) {
+      const message = err.response?.data?.message || err.message || "Failed to load verification requests";
+      setError(message);
+      console.error('Error loading requests:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAction = async (id, action) => {
     try {
-      if (action === 'approve') await verificationService.approveRequest(id);
-      else {
-        if (!reason) return alert("Please provide a rejection reason");
+      setError(null);
+      if (action === 'approve') {
+        await verificationService.approveRequest(id);
+      } else {
+        if (!reason) {
+          setError("Please provide a rejection reason");
+          return;
+        }
         await verificationService.rejectRequest(id, reason);
       }
       setRequests(requests.filter(r => r._id !== id));
       setSelected(null);
       setReason('');
-    } catch (err) { alert("Action failed"); }
+    } catch (err) {
+      const message = err.response?.data?.message || err.message || `Action failed`;
+      setError(message);
+      console.error(`Error during ${action}:`, err);
+    }
   };
 
   if (loading) return <div className="p-10 text-center font-medium">Loading requests...</div>;
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg">
+        <p className="font-semibold">Error</p>
+        <p className="text-sm mt-1">{error}</p>
+        <button onClick={() => loadRequests()} className="mt-4 bg-red-600 text-white px-4 py-2 rounded text-sm">
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-xl shadow-sm overflow-hidden">
@@ -64,6 +98,25 @@ const Verifications = () => {
           <div className="bg-white rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto p-8 relative">
             <button onClick={() => setSelected(null)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">✕</button>
             <h2 className="text-2xl font-bold mb-6">Review Identity: {selected.fullName}</h2>
+
+            <div className="mb-8 rounded-xl border border-gray-200 bg-gray-50 p-5">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Full Name</p>
+                  <p className="mt-1 text-sm font-bold text-slate-900">{selected.fullName || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">CNIC Number</p>
+                  <p className="mt-1 text-sm font-bold text-slate-900">{selected.cnicNumber || selected.cnic || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Date of Birth</p>
+                  <p className="mt-1 text-sm font-bold text-slate-900">
+                    {formatDate(selected.dateOfBirth || selected.dob)}
+                  </p>
+                </div>
+              </div>
+            </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
               <div><p className="text-xs font-bold text-gray-400 uppercase mb-2">Selfie</p><img src={selected.selfie.url} className="rounded-lg shadow-sm border" /></div>

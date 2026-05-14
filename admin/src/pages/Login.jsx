@@ -17,7 +17,18 @@ const Login = () => {
       await authService.login(email, password);
       navigate('/dashboard');
     } catch (err) {
-      setError(err.message || "Login failed. Check your credentials.");
+        // Better error messages based on error type
+        if (err.response?.status === 401) {
+          setError("Invalid email or password. Access denied.");
+        } else if (err.response?.status === 409) {
+          setError(err.response?.data?.message || "User not found or access denied.");
+        } else if (err.message === "Access denied. Admin account required.") {
+          setError("This account does not have admin privileges.");
+        } else if (!err.response) {
+          setError("Network error. Please check your connection and try again.");
+        } else {
+          setError(err.message || "Login failed. Please try again.");
+        }
     } finally {
       setLoading(false);
     }
