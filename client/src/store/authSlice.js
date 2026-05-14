@@ -25,7 +25,9 @@ const authSlice = createSlice({
     },
     updateUser: (state, action) => {
       if (state.userData) {
-        state.userData = { ...state.userData, ...action.payload };
+        // Redux Toolkit safely allows us to mutate state directly.
+        // Object.assign cleanly merges the new payload (like our pending status) into the existing userData.
+        Object.assign(state.userData, action.payload);
       }
     },
     setEmailVerified: (state) => {

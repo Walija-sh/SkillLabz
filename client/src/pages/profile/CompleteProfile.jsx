@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux'; 
 import { updateUser } from '../../store/authSlice'; 
@@ -6,6 +6,8 @@ import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
 import LocationPicker from '../../components/common/LocationPicker';
 import userService from '../../services/user.service'; 
+import Webcam from 'react-webcam';
+import verificationService from '../../services/verification.service';
 
 export default function CompleteProfile() {
   const navigate = useNavigate();
@@ -15,6 +17,7 @@ export default function CompleteProfile() {
   
   const [isEditing] = useState(user?.profileCompleted || false);
 
+  // --- BASIC PROFILE STATE ---
   const [formData, setFormData] = useState({
     bio: user?.bio || '',
     phone: user?.phone || '',
@@ -32,6 +35,20 @@ export default function CompleteProfile() {
     success: null,
   });
 
+  // --- IDENTITY VERIFICATION STATE ---
+  const webcamRef = useRef(null);
+  const [verifUiState, setVerifUiState] = useState({ isLoading: false, error: null, success: null });
+  const [verifData, setVerifData] = useState({
+    fullName: '',
+    cnicNumber: '',
+    dateOfBirth: '',
+    cnicFront: null,
+    cnicBack: null,
+    selfieUrl: null,
+    selfieFile: null
+  });
+
+  // --- PROFILE HANDLERS ---
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -69,7 +86,6 @@ export default function CompleteProfile() {
 
     try {
       const profileResponse = await userService.completeProfile(formData);
-      
       const updatedUserData = profileResponse.data?.data || profileResponse.data || profileResponse.user;
       
       if (updatedUserData) {
@@ -105,10 +121,80 @@ export default function CompleteProfile() {
     }
   };
 
+  // --- IDENTITY VERIFICATION HANDLERS ---
+  const handleVerifChange = (e) => {
+    const { name, value } = e.target;
+    
+    // Explicit 13-digit numeric restriction for CNIC
+    if (name === 'cnicNumber') {
+      const numericValue = value.replace(/\D/g, ''); // Removes all non-number characters
+      if (numericValue.length > 13) return; // Restricts to exactly 13 digits
+      setVerifData(prev => ({ ...prev, [name]: numericValue }));
+      return;
+    }
+
+    setVerifData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleVerifFile = (e, fieldName) => {
+    const file = e.target.files[0];
+    if (file) setVerifData(prev => ({ ...prev, [fieldName]: file }));
+  };
+
+  const dataURLtoFile = (dataurl, filename) => {
+    let arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
+        bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+    while(n--){ u8arr[n] = bstr.charCodeAt(n); }
+    return new File([u8arr], filename, {type:mime});
+  };
+
+  const captureSelfie = useCallback(() => {
+    const imageSrc = webcamRef.current.getScreenshot();
+    if (imageSrc) {
+      setVerifData(prev => ({ 
+        ...prev, 
+        selfieUrl: imageSrc, 
+        selfieFile: dataURLtoFile(imageSrc, 'selfie.jpg') 
+      }));
+    }
+  }, [webcamRef]);
+
+  const handleVerificationSubmit = async (e) => {
+    e.preventDefault();
+    if (!verifData.cnicFront || !verifData.cnicBack || !verifData.selfieFile) {
+      setVerifUiState({ error: "Please provide all 3 required images (CNIC Front, Back, and Live Selfie).", isLoading: false, success: null });
+      return;
+    }
+
+    setVerifUiState({ isLoading: true, error: null, success: null });
+    try {
+      const vForm = new FormData();
+      vForm.append('fullName', verifData.fullName);
+      vForm.append('cnicNumber', verifData.cnicNumber);
+      vForm.append('dateOfBirth', verifData.dateOfBirth);
+      vForm.append('cnicFront', verifData.cnicFront);
+      vForm.append('cnicBack', verifData.cnicBack);
+      vForm.append('selfie', verifData.selfieFile);
+
+      await verificationService.submitVerification(vForm);
+      
+      // Update local redux state so UI changes instantly to pending banner
+      dispatch(updateUser({ identityVerificationStatus: 'pending' }));
+      setVerifUiState({ isLoading: false, error: null, success: "Verification submitted successfully!" });
+    } catch (err) {
+      setVerifUiState({
+        isLoading: false,
+        error: err.response?.data?.message || "Failed to submit verification.",
+        success: null,
+      });
+    }
+  };
+
   return (
     <div className="flex min-h-[85vh] items-center justify-center px-4 py-12 bg-gray-50/50">
       <div className="w-full max-w-2xl">
         
+        {/* PAGE HEADER */}
         <div className="mb-6 text-center sm:text-left">
           <h1 className="text-3xl font-black tracking-tight text-gray-900 uppercase">
             {isEditing ? "Edit Your Profile" : "Complete Your Profile"}
@@ -122,6 +208,7 @@ export default function CompleteProfile() {
 
         <div className="bg-white rounded-3xl p-8 sm:p-10 shadow-sm border border-gray-100">
           
+          {/* PROFILE FORM SECTION */}
           {uiState.error && (
             <div className="mb-6 rounded-2xl bg-red-50 p-4 text-sm font-bold text-red-700 border border-red-100 animate-in fade-in slide-in-from-top-2">
               {uiState.error}
@@ -182,67 +269,135 @@ export default function CompleteProfile() {
             </div>
 
             <div className="pt-2">
-              <Input 
-                label="Phone Number*" 
-                name="phone" 
-                type="tel" 
-                placeholder="e.g., 03149117269" 
-                value={formData.phone} 
-                onChange={handleChange} 
-                disabled={uiState.isLoading}
-                required 
-              />
+              <Input label="Phone Number*" name="phone" type="tel" placeholder="e.g., 03149117269" value={formData.phone} onChange={handleChange} disabled={uiState.isLoading} required />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-              <Input 
-                label="City*" 
-                name="city" 
-                placeholder="e.g., Taxila" 
-                value={formData.city} 
-                onChange={handleChange} 
-                disabled={uiState.isLoading}
-                required 
-              />
-              <Input 
-                label="Area / Markaz*" 
-                name="addressText" 
-                placeholder="e.g., G-11 Markaz" 
-                value={formData.addressText} 
-                onChange={handleChange} 
-                disabled={uiState.isLoading}
-                required 
-              />
+              <Input label="City*" name="city" placeholder="e.g., Taxila" value={formData.city} onChange={handleChange} disabled={uiState.isLoading} required />
+              <Input label="Area / Markaz*" name="addressText" placeholder="e.g., G-11 Markaz" value={formData.addressText} onChange={handleChange} disabled={uiState.isLoading} required />
             </div>
 
             <div className="pt-2">
-              <LocationPicker 
-                currentCoordinates={formData.coordinates} 
-                onLocationSelect={handleLocationUpdate} 
-              />
+              <LocationPicker currentCoordinates={formData.coordinates} onLocationSelect={handleLocationUpdate} />
             </div>
 
-            <div className="pt-8 border-t border-gray-100 flex gap-4">
+            <div className="pt-8 flex gap-4">
               {isEditing && (
-                <Button 
-                  type="button" 
-                  onClick={() => navigate('/profile')} 
-                  className="w-full sm:w-1/3 py-4 bg-gray-100 text-gray-700 font-bold hover:bg-gray-200"
-                  disabled={uiState.isLoading}
-                >
+                <Button type="button" onClick={() => navigate('/profile')} className="w-full sm:w-1/3 py-4 bg-gray-100 text-gray-700 font-bold hover:bg-gray-200" disabled={uiState.isLoading}>
                   Cancel
                 </Button>
               )}
-              <Button 
-                type="submit" 
-                className={`w-full py-4 bg-blue-600 text-lg font-black shadow-xl shadow-blue-100 hover:shadow-blue-200 transition-all active:scale-[0.98] ${isEditing ? 'sm:w-2/3' : ''}`} 
-                isLoading={uiState.isLoading}
-              >
-                {isEditing ? "Save Changes" : "Complete Profile"}
+              <Button type="submit" className={`w-full py-4 bg-blue-600 text-lg font-black shadow-xl shadow-blue-100 hover:shadow-blue-200 transition-all active:scale-[0.98] ${isEditing ? 'sm:w-2/3' : ''}`} isLoading={uiState.isLoading}>
+                {isEditing ? "Save Profile Changes" : "Complete Profile"}
               </Button>
             </div>
-
           </form>
+
+          {/* --- NEW: IDENTITY VERIFICATION SECTION --- */}
+          <div className="mt-16 pt-10 border-t-2 border-gray-100">
+            <div className="mb-8">
+              <h2 className="text-2xl font-black tracking-tight text-gray-900 uppercase">Identity Verification</h2>
+              <p className="mt-1 text-sm text-gray-500">Secure your account by verifying your identity with your CNIC and a live selfie.</p>
+            </div>
+
+            {/* STATUS BANNERS */}
+            {user?.identityVerificationStatus === 'pending' && (
+              <div className="rounded-2xl bg-yellow-50 p-6 border border-yellow-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 bg-yellow-500 rounded-full animate-pulse"></div>
+                  <h3 className="font-bold text-yellow-800 text-lg">Verification Pending Review</h3>
+                </div>
+                <p className="mt-2 text-yellow-700 text-sm">Your documents have been received and are currently being reviewed by an admin. We will notify you once a decision is made.</p>
+              </div>
+            )}
+
+            {user?.identityVerificationStatus === 'approved' && (
+              <div className="rounded-2xl bg-green-50 p-6 border border-green-200">
+                <div className="flex items-center gap-3">
+                  <span className="text-green-600 text-xl">✅</span>
+                  <h3 className="font-bold text-green-800 text-lg">Verification Successful</h3>
+                </div>
+                <p className="mt-2 text-green-700 text-sm">Your identity has been verified. You now have the trusted badge on your profile!</p>
+              </div>
+            )}
+
+            {/* ACTIVE VERIFICATION FORM */}
+            {(user?.identityVerificationStatus === 'rejected' || !user?.identityVerificationStatus || user?.identityVerificationStatus === 'not_submitted') && (
+              <div className="space-y-6">
+                
+                {user?.identityVerificationStatus === 'rejected' && (
+                  <div className="rounded-2xl bg-red-50 p-4 border border-red-200 text-sm text-red-700 font-medium">
+                    Your previous request was rejected. Please ensure your photos are bright and clear, and your details match your CNIC exactly, then try again.
+                  </div>
+                )}
+
+                {verifUiState.error && <div className="rounded-xl bg-red-50 p-4 text-sm font-bold text-red-700">{verifUiState.error}</div>}
+                {verifUiState.success && <div className="rounded-xl bg-green-50 p-4 text-sm font-bold text-green-700">{verifUiState.success}</div>}
+
+                <form onSubmit={handleVerificationSubmit} className="space-y-6 bg-gray-50 p-6 rounded-3xl border border-gray-100">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Input label="Full Name (as on CNIC)*" name="fullName" value={verifData.fullName} onChange={handleVerifChange} required disabled={verifUiState.isLoading} />
+                    <Input 
+                      label="CNIC Number (without dashes)*" 
+                      name="cnicNumber" 
+                      value={verifData.cnicNumber} 
+                      onChange={handleVerifChange} 
+                      required 
+                      disabled={verifUiState.isLoading} 
+                      maxLength="13" 
+                      inputMode="numeric" 
+                      pattern="\d*" 
+                    />
+                    <Input label="Date of Birth*" type="date" name="dateOfBirth" value={verifData.dateOfBirth} onChange={handleVerifChange} required disabled={verifUiState.isLoading} />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-900 mb-2">CNIC Front Image*</label>
+                      <input type="file" accept="image/*" onChange={(e) => handleVerifFile(e, 'cnicFront')} required disabled={verifUiState.isLoading} className="w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-900 mb-2">CNIC Back Image*</label>
+                      <input type="file" accept="image/*" onChange={(e) => handleVerifFile(e, 'cnicBack')} required disabled={verifUiState.isLoading} className="w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                    </div>
+                  </div>
+
+                  {/* LIVE WEBCAM SECTION */}
+                  <div className="pt-4 border-t border-gray-200 mt-4">
+                    <label className="block text-sm font-bold text-gray-900 mb-4">Live Selfie Verification*</label>
+                    <div className="flex flex-col md:flex-row gap-6">
+                      <div className="w-full md:w-1/2 overflow-hidden rounded-2xl border-4 border-gray-200 bg-black aspect-video relative">
+                        {verifData.selfieUrl ? (
+                          <img src={verifData.selfieUrl} alt="Selfie preview" className="w-full h-full object-cover" />
+                        ) : (
+                          <Webcam audio={false} ref={webcamRef} mirrored={true} screenshotFormat="image/jpeg" className="w-full h-full object-cover" />
+                        )}
+                      </div>
+                      <div className="w-full md:w-1/2 flex flex-col justify-center gap-4">
+                        <p className="text-sm text-gray-500">Please ensure your face is clearly visible and well-lit. Do not wear sunglasses or hats.</p>
+                        {verifData.selfieUrl ? (
+                          <Button type="button" onClick={() => setVerifData(prev => ({...prev, selfieUrl: null, selfieFile: null}))} className="bg-gray-200 text-gray-800 hover:bg-gray-300">
+                            Retake Photo
+                          </Button>
+                        ) : (
+                          <Button type="button" onClick={captureSelfie} className="bg-gray-800 text-white hover:bg-black">
+                            Capture Face
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-6">
+                    <Button type="submit" isLoading={verifUiState.isLoading} className="w-full py-4 bg-gray-900 text-lg font-black shadow-xl hover:bg-black transition-all active:scale-[0.98]">
+                      Submit for Verification
+                    </Button>
+                  </div>
+                </form>
+              </div>
+            )}
+          </div>
+
         </div>
       </div>
     </div>
