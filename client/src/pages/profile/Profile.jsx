@@ -33,6 +33,53 @@ export default function Profile() {
   const area = user?.location?.addressText || '';
   const displayLocation = city && area ? `${area}, ${city}` : 'Location not set';
 
+  // ID verification badge metadata (UI-only)
+  const idBadge = (() => {
+    const status = user?.identityVerificationStatus;
+    switch (status) {
+      case 'approved':
+        return {
+          text: 'ID Verified',
+          classes: 'bg-indigo-50 text-indigo-700 border-indigo-100',
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 11.586 7.707 10.293a1 1 0 10-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+            </svg>
+          )
+        };
+      case 'pending':
+        return {
+          text: 'ID Verification Pending',
+          classes: 'bg-amber-50 text-amber-700 border-amber-100',
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+              <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9 7h2v5H9V7zm0 6h2v2H9v-2z" />
+            </svg>
+          )
+        };
+      case 'rejected':
+        return {
+          text: 'ID Verification Rejected',
+          classes: 'bg-red-50 text-red-700 border-red-100',
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-2.5-9.5a1 1 0 011.414-1.414L10 8.586l1.086-1.5a1 1 0 011.414 1.414L11.414 10l1.086 1.086a1 1 0 01-1.414 1.414L10 11.414l-1.086 1.086a1 1 0 01-1.414-1.414L8.586 10 7.5 8.914z" clipRule="evenodd" />
+            </svg>
+          )
+        };
+      default:
+        return {
+          text: 'ID Not Verified',
+          classes: 'bg-gray-100 text-gray-600 border-gray-100',
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+              <path d="M10 2a6 6 0 100 12A6 6 0 0010 2zM2 18a8 8 0 0116 0H2z" />
+            </svg>
+          )
+        };
+    }
+  })();
+
   // Email Verification Handler
   const handleVerifyEmail = async () => {
     setIsSending(true);
@@ -91,15 +138,21 @@ export default function Profile() {
             </h1>
             <p className="text-gray-500 font-medium mt-1">{user?.email}</p>
             
-            <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 text-xs font-bold uppercase tracking-wider rounded-lg border border-green-100">
+            <div className="mt-4 flex flex-col items-center sm:items-start gap-2">
               {user?.isEmailVerified ? (
-                <>
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 text-xs font-bold uppercase tracking-wider rounded-full border border-green-100">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5Z" clipRule="evenodd" /></svg>
-                  Verified Member
-                </>
+                  Email Verified
+                </div>
               ) : (
-                <span className="text-yellow-600 bg-yellow-50 border-yellow-100 px-2 py-0.5 rounded">Unverified Email</span>
+                <div className="text-yellow-600 bg-yellow-50 border-yellow-100 px-2 py-0.5 rounded">Unverified Email</div>
               )}
+
+              {/* Identity verification badge (stacked under email badge) */}
+              <div className={`inline-flex items-center gap-2 px-3 py-1 text-xs font-bold rounded-full border ${idBadge.classes}`}>
+                {idBadge.icon}
+                <span>{idBadge.text}</span>
+              </div>
             </div>
           </div>
 
