@@ -6,6 +6,6 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
-    port: 5174, // Keeps admin separate from user frontend
+    port: 5172, 
   },
 })
