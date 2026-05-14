@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import toolService from '../../services/tool.service';
 import rentalService from '../../services/rental.service';
@@ -17,6 +17,15 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('tools'); 
   const [otpByRentalId, setOtpByRentalId] = useState({});
   const [otpLoading, setOtpLoading] = useState({});
+  const isRequestStatus = (status) => ['pending', 'requested'].includes(status);
+  const [cancelModal, setCancelModal] = useState({ open: false, rental: null });
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelSubmitting, setCancelSubmitting] = useState(false);
+  const [cancelError, setCancelError] = useState(null);
+  const [approveModal, setApproveModal] = useState({ open: false, rentalId: null });
+  const [additionalTerms, setAdditionalTerms] = useState("");
+  const [approveError, setApproveError] = useState("");
+  const [approveSubmitting, setApproveSubmitting] = useState(false);
 
   // --- DELETE MODAL STATE ---
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -79,7 +88,7 @@ export default function Dashboard() {
   const handleRentalAction = async (actionType, rentalId) => {
     try {
       let updatedRental;
-      if (actionType === 'approve') updatedRental = await rentalService.approveRental(rentalId);
+      if (actionType === 'approve') updatedRental = await rentalService.approveRental(rentalId, additionalTerms);
       else if (actionType === 'reject') updatedRental = await rentalService.rejectRental(rentalId);
       else if (actionType === 'start') updatedRental = await rentalService.startRental(rentalId);
       else if (actionType === 'complete') updatedRental = await rentalService.completeRental(rentalId);
@@ -91,6 +100,37 @@ export default function Dashboard() {
     } catch (err) {
       console.error(`Failed to ${actionType} rental:`, err);
       alert(err.message || `Failed to ${actionType} rental. Ensure dates don't conflict.`);
+      throw err;
+    }
+  };
+
+  const openApproveModal = (rentalId) => {
+    setApproveModal({ open: true, rentalId });
+    setAdditionalTerms("");
+    setApproveError("");
+    setApproveSubmitting(false);
+  };
+
+  const submitApprove = async () => {
+    if (!approveModal.rentalId) return;
+    if (additionalTerms && !additionalTerms.trim()) {
+      setApproveError("Additional terms cannot be empty.");
+      return;
+    }
+    if (additionalTerms.trim().length > 500) {
+      setApproveError("Additional terms must be 500 characters or less.");
+      return;
+    }
+    setApproveSubmitting(true);
+    setApproveError("");
+    try {
+      await handleRentalAction("approve", approveModal.rentalId);
+      setApproveModal({ open: false, rentalId: null });
+      setAdditionalTerms("");
+    } catch {
+      setApproveError("Approval failed.");
+    } finally {
+      setApproveSubmitting(false);
     }
   };
 
@@ -113,6 +153,43 @@ export default function Dashboard() {
     }
   };
 
+  const canCancelRental = (status) => ['pending', 'requested', 'approved', 'active'].includes(status);
+
+  const openCancelModal = (rental) => {
+    setCancelModal({ open: true, rental });
+    setCancelReason("");
+    setCancelSubmitting(false);
+    setCancelError(null);
+  };
+
+  const closeCancelModal = () => {
+    setCancelModal({ open: false, rental: null });
+    setCancelReason("");
+    setCancelSubmitting(false);
+    setCancelError(null);
+  };
+
+  const submitCancellation = async () => {
+    const rental = cancelModal.rental;
+    if (!rental?._id) return;
+    if (!cancelReason.trim()) {
+      setCancelError("Cancellation reason is required.");
+      return;
+    }
+
+    setCancelSubmitting(true);
+    setCancelError(null);
+    try {
+      const updated = await rentalService.cancelRental(rental._id, cancelReason.trim());
+      setRentals((prev) => prev.map((r) => (r._id === rental._id ? { ...r, ...updated.rental } : r)));
+      closeCancelModal();
+    } catch (err) {
+      setCancelError(err?.message || "Failed to cancel rental.");
+    } finally {
+      setCancelSubmitting(false);
+    }
+  };
+
   // --- STATS ---
   const totalTools = items.length;
   let activeRentalsCount = 0;
@@ -121,7 +198,7 @@ export default function Dashboard() {
 
   rentals.forEach(rental => {
     if (rental.rentalStatus === 'active') activeRentalsCount++;
-    if (rental.rentalStatus === 'pending') pendingRequestsCount++;
+    if (isRequestStatus(rental.rentalStatus)) pendingRequestsCount++;
     if (rental.rentalStatus === 'completed') {
       const start = new Date(rental.startDate);
       const end = new Date(rental.endDate);
@@ -131,8 +208,8 @@ export default function Dashboard() {
   });
 
   // --- FILTER RENTALS FOR TABS ---
-  const pendingRequests = rentals.filter(r => r.rentalStatus === 'pending');
-  const activeAndPastRentals = rentals.filter(r => r.rentalStatus !== 'pending');
+  const pendingRequests = rentals.filter(r => isRequestStatus(r.rentalStatus));
+  const activeAndPastRentals = rentals.filter(r => !isRequestStatus(r.rentalStatus));
 
   const formatDate = (dateString) => new Date(dateString).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 
@@ -233,7 +310,7 @@ export default function Dashboard() {
 
         ) : activeTab === 'requests' ? (
 
-          /* ✅ --- TAB: REQUESTS (PENDING ONLY) --- */
+          /* ✅ --- TAB: REQUESTS (PENDING/REQUESTED) --- */
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {pendingRequests.length === 0 ? (
               <div className="col-span-full text-center py-12 text-gray-400 font-bold uppercase tracking-widest">No pending requests.</div>
@@ -243,8 +320,10 @@ export default function Dashboard() {
                   <div className="flex gap-4 mb-6">
                     <img src={req.item?.images?.[0]?.url || 'https://via.placeholder.com/150'} alt="" className="w-16 h-16 rounded-xl object-cover bg-gray-100 shrink-0" />
                     <div>
-                      <h3 className="font-black text-gray-900 uppercase tracking-tight">{req.item?.title}</h3>
-                      <p className="text-xs font-bold text-gray-500 mt-1">Requested by: <span className="text-blue-600">{req.renter?.username}</span></p>
+                      <h3 className="font-black text-gray-900 uppercase tracking-tight">
+                        {req.item?._id ? <Link className="hover:text-blue-600" to={`/items/${req.item._id}`}>{req.item?.title}</Link> : req.item?.title}
+                      </h3>
+                      <p className="text-xs font-bold text-gray-500 mt-1">Requested by: {req.renter?._id ? <Link className="text-blue-600" to={`/users/${req.renter._id}`}>{req.renter?.username}</Link> : <span className="text-gray-400">Deleted user</span>}</p>
                       <p className="text-xs font-bold text-gray-400 mt-1">{formatDate(req.startDate)} - {formatDate(req.endDate)}</p>
                     </div>
                   </div>
@@ -253,8 +332,9 @@ export default function Dashboard() {
                     <span className="text-lg font-black text-green-600">Rs. {req.totalPrice}</span>
                   </div>
                   <div className="flex gap-3">
-                    <button onClick={() => handleRentalAction('approve', req._id)} className="flex-1 py-3 bg-gray-900 text-white rounded-xl font-black uppercase text-xs tracking-widest hover:bg-gray-800 transition-colors">Approve</button>
+                    <button onClick={() => openApproveModal(req._id)} className="flex-1 py-3 bg-gray-900 text-white rounded-xl font-black uppercase text-xs tracking-widest hover:bg-gray-800 transition-colors">Approve</button>
                     <button onClick={() => handleRentalAction('reject', req._id)} className="flex-1 py-3 bg-red-50 text-red-600 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-red-100 transition-colors">Reject</button>
+                    <button onClick={() => openCancelModal(req)} className="flex-1 py-3 bg-white text-red-700 border border-red-100 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-red-50 transition-colors">Cancel</button>
                   </div>
                 </div>
               ))
@@ -273,8 +353,13 @@ export default function Dashboard() {
                   <div className="flex items-center gap-4">
                     <img src={rental.item?.images?.[0]?.url || 'https://via.placeholder.com/150'} alt="" className="w-14 h-14 rounded-xl object-cover bg-gray-100 shrink-0" />
                     <div>
-                      <h3 className="font-black text-gray-900 uppercase tracking-tight">{rental.item?.title}</h3>
+                      <h3 className="font-black text-gray-900 uppercase tracking-tight">
+                        {rental.item?._id ? <Link to={`/items/${rental.item._id}`} className="hover:text-blue-600">{rental.item?.title}</Link> : rental.item?.title}
+                      </h3>
                       <p className="text-xs font-bold text-gray-500 mt-1">{formatDate(rental.startDate)} to {formatDate(rental.endDate)} • Rs. {rental.totalPrice}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Renter: {rental.renter?._id ? <Link to={`/users/${rental.renter._id}`} className="text-blue-600 hover:underline">{rental.renter.username || rental.renter.fullName || "View profile"}</Link> : "Deleted user"}
+                      </p>
                     </div>
                   </div>
                   
@@ -324,6 +409,17 @@ export default function Dashboard() {
                         )}
                       </div>
                     )}
+                    {canCancelRental(rental.rentalStatus) && (
+                      <button
+                        onClick={() => openCancelModal(rental)}
+                        className="w-full sm:w-auto px-4 py-2 bg-red-50 text-red-700 border border-red-100 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-red-100"
+                      >
+                        Cancel Rental
+                      </button>
+                    )}
+                    <Link to={`/rentals/${rental._id}`} className="w-full sm:w-auto px-4 py-2 bg-white text-gray-700 border border-gray-200 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-gray-50">
+                      View Details
+                    </Link>
                   </div>
                 </div>
               ))
@@ -342,6 +438,60 @@ export default function Dashboard() {
             <div className="flex flex-col gap-3">
               <button onClick={confirmDelete} disabled={isDeleting} className="w-full py-4 bg-red-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-lg shadow-red-100 hover:bg-red-700">{isDeleting ? 'Processing...' : 'Delete Permanently'}</button>
               <button onClick={() => { setDeleteModalOpen(false); setDeleteError(null); }} disabled={isDeleting} className="w-full py-4 bg-gray-100 text-gray-500 rounded-2xl font-black uppercase tracking-widest">Keep It</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {cancelModal.open && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-md">
+          <div className="bg-white rounded-[2.5rem] p-8 max-w-md w-full shadow-2xl border border-gray-100">
+            <h3 className="text-2xl font-black text-center text-gray-900 mb-2 uppercase tracking-tight">Cancel Rental?</h3>
+            <p className="text-center text-gray-500 mb-6 font-medium">
+              This action requires a reason and will be logged for trust and dispute tracking.
+            </p>
+            {cancelError && (
+              <div className="bg-red-50 text-red-600 p-4 rounded-2xl mb-6 text-xs font-black text-center uppercase">
+                {cancelError}
+              </div>
+            )}
+            <textarea
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              rows={4}
+              placeholder="Enter cancellation reason..."
+              className="w-full px-4 py-3 rounded-2xl border-2 border-gray-100 bg-white focus:border-red-500 outline-none font-medium resize-none mb-6"
+            />
+            <div className="flex flex-col gap-3">
+              <button onClick={submitCancellation} disabled={cancelSubmitting} className="w-full py-4 bg-red-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-lg shadow-red-100 hover:bg-red-700 disabled:opacity-60">
+                {cancelSubmitting ? 'Cancelling...' : 'Confirm Cancellation'}
+              </button>
+              <button onClick={closeCancelModal} disabled={cancelSubmitting} className="w-full py-4 bg-gray-100 text-gray-500 rounded-2xl font-black uppercase tracking-widest">Keep Rental</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {approveModal.open && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-md">
+          <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl border border-gray-100">
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Approve & Generate Contract</h3>
+            <p className="text-sm text-gray-500 mb-4">Optional additional terms (max 500 chars). Baseline SkillLabz terms will always be included.</p>
+            {approveError ? <p className="text-xs text-red-600 mb-2">{approveError}</p> : null}
+            <textarea
+              value={additionalTerms}
+              onChange={(e) => setAdditionalTerms(e.target.value)}
+              maxLength={500}
+              rows={4}
+              placeholder="Usage instructions, care guidelines, return expectations..."
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:border-blue-500 outline-none"
+            />
+            <p className="text-xs text-gray-400 mt-1">{additionalTerms.length}/500</p>
+            <div className="flex gap-3 mt-4">
+              <button onClick={submitApprove} disabled={approveSubmitting} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold disabled:opacity-60">
+                {approveSubmitting ? "Approving..." : "Approve Rental"}
+              </button>
+              <button onClick={() => setApproveModal({ open: false, rentalId: null })} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-semibold">
+                Cancel
+              </button>
             </div>
           </div>
         </div>

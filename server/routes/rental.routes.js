@@ -7,14 +7,17 @@ import {
   createRental,
   getMyRentals,
   getOwnerRentals,
+  getRentalById,
   approveRental,
   rejectRental,
   startRental,
   completeRental,
+  cancelRental,
   generateHandoverOtp,
   verifyHandoverOtp,
   generateReturnOtp,
-  verifyReturnOtp
+  verifyReturnOtp,
+  agreeRentalContract
 } from "../controllers/rental.controller.js";
 
 const RentalRouter = express.Router();
@@ -38,6 +41,7 @@ RentalRouter.post(
 
 RentalRouter.get("/my-rentals", protect, getMyRentals);
 RentalRouter.get("/owner", protect, getOwnerRentals);
+RentalRouter.get("/:id", protect, getRentalById);
 
 
 // -------------------------
@@ -46,6 +50,7 @@ RentalRouter.get("/owner", protect, getOwnerRentals);
 
 RentalRouter.patch("/:id/approve", protect, approveRental);
 RentalRouter.patch("/:id/reject", protect, rejectRental);
+RentalRouter.patch("/:id/agree-contract", protect, agreeRentalContract);
 
 
 // -------------------------
@@ -54,6 +59,7 @@ RentalRouter.patch("/:id/reject", protect, rejectRental);
 
 RentalRouter.patch("/:id/start", protect, startRental);
 RentalRouter.patch("/:id/complete", protect, completeRental);
+RentalRouter.patch("/:id/cancel", protect, cancelRental);
 
 // -------------------------
 // OTP VERIFICATION (EXTENSION)

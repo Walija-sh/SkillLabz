@@ -6,6 +6,7 @@ import {
   createItem,
   getAllItems,
   getSingleItem,
+  getItemAvailability,
   updateItem,
   deleteItem,
   getMyItems,
@@ -22,6 +23,7 @@ const ItemRouter = express.Router();
 ItemRouter.get("/", getAllItems); // filters, pagination
 ItemRouter.get("/near", getNearbyItems); // geo search
 ItemRouter.get("/my-items", protect, getMyItems);
+ItemRouter.get("/:id/availability", getItemAvailability);
 ItemRouter.get("/:id", getSingleItem);
 
 ItemRouter.post(

@@ -17,6 +17,7 @@ import Dashboard from './pages/profile/Dashboard'; // <-- Newly added Dashboard 
 import EditTool from './pages/tools/EditTool';
 import RequestRental from './pages/rentals/RequestRental';
 import MyRentals from './pages/rentals/MyRentals';
+import RentalDetails from "./pages/rentals/RentalDetails";
 import ProtectedRoute from './components/common/ProtectedRoute'; 
 import PublicProfile from "./pages/profile/PublicProfile";
 
@@ -75,10 +76,13 @@ const App = () => {
         <Route path="login" element={<Login />} />
         <Route path="verify-email/:token" element={<VerifyEmail />} />
         <Route path="browse-tools" element={<BrowseTools />} />
+        <Route path="items/:id" element={<SingleTool />} />
         <Route path="tools/:id" element={<SingleTool />} />
         <Route path="users/:id" element={<PublicProfile />} />
+        <Route path="items/:id/rent" element={<RequestRental />} />
         <Route path="/tools/:id/rent" element={<RequestRental />} />
         <Route path="/my-rentals" element={<MyRentals />} />
+        <Route path="rentals/:id" element={<RentalDetails />} />
         
         {/* ==========================================
             PROTECTED ROUTES

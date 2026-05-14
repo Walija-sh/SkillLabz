@@ -12,6 +12,8 @@ export default function RequestRental() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [availability, setAvailability] = useState([]);
+  const [calendarWindow, setCalendarWindow] = useState(null);
 
   // Form State
   const [startDate, setStartDate] = useState('');
@@ -22,8 +24,13 @@ export default function RequestRental() {
   useEffect(() => {
     const fetchItem = async () => {
       try {
-        const response = await toolService.getToolById(id);
-        setItem(response.item);
+        const [itemResponse, availabilityResponse] = await Promise.all([
+          toolService.getToolById(id),
+          rentalService.getItemAvailability(id)
+        ]);
+        setItem(itemResponse.item);
+        setAvailability(availabilityResponse.bookedRanges || []);
+        setCalendarWindow(availabilityResponse.calendarWindow || null);
       } catch (err) {
         setError(err.message || "Failed to load item details.");
       } finally {
@@ -39,7 +46,7 @@ export default function RequestRental() {
     const start = new Date(startDate);
     const end = new Date(endDate);
     const diffTime = end - start;
-    rentalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    rentalDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
   }
 
   const validDays = rentalDays > 0 ? rentalDays : 0;
@@ -51,14 +58,118 @@ export default function RequestRental() {
   // ✅ FIXED: Total price now only includes rental fees and optional skill session
   const totalPrice = basePrice + extraCost;
 
-  const today = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const endOfYear = new Date(now.getFullYear(), 11, 31);
+  const todayInputValue = today.toISOString().split('T')[0];
+
+  const toStartOfDay = (value) => {
+    const d = new Date(value);
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  };
+
+  const toEndOfDay = (value) => {
+    const d = new Date(value);
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+  };
+
+  const toDateKey = (value) => {
+    const d = toStartOfDay(value);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const calendarDayStatus = React.useMemo(() => {
+    const dayStatus = new Map();
+
+    const applyRange = (start, end, type) => {
+      const cursor = toStartOfDay(start);
+      const last = toEndOfDay(end);
+      let guard = 0;
+      while (cursor <= last && guard < 370) {
+        if (cursor >= today && cursor <= endOfYear) {
+          const key = toDateKey(cursor);
+          const existing = dayStatus.get(key);
+          if (existing !== "booked") {
+            dayStatus.set(key, type);
+          }
+        }
+        cursor.setDate(cursor.getDate() + 1);
+        guard += 1;
+      }
+    };
+
+    availability.forEach((slot) => {
+      const slotType = slot.availabilityType;
+      if (!slotType) return;
+      const start = slot.effectiveStartTime || slot.actualStartTime || slot.startDate;
+      const end = slot.effectiveEndTime || slot.actualEndTime || slot.endDate;
+      if (!start || !end) return;
+      applyRange(start, end, slotType);
+    });
+
+    return dayStatus;
+  }, [availability]);
+
+  const calendarMonths = React.useMemo(() => {
+    const months = [];
+    for (let month = today.getMonth(); month <= 11; month += 1) {
+      const firstDay = new Date(today.getFullYear(), month, 1);
+      const totalDays = new Date(today.getFullYear(), month + 1, 0).getDate();
+      const leadingBlanks = firstDay.getDay();
+      const days = [];
+
+      for (let i = 0; i < leadingBlanks; i += 1) {
+        days.push(null);
+      }
+
+      for (let day = 1; day <= totalDays; day += 1) {
+        const date = new Date(today.getFullYear(), month, day);
+        const key = toDateKey(date);
+        days.push({
+          key,
+          day,
+          isPast: date < today,
+          status: calendarDayStatus.get(key) || null
+        });
+      }
+
+      months.push({
+        key: `${today.getFullYear()}-${month}`,
+        label: firstDay.toLocaleString(undefined, { month: 'long', year: 'numeric' }),
+        days
+      });
+    }
+
+    return months;
+  }, [calendarDayStatus, today, endOfYear]);
+
+  const hasSelectionConflict = React.useMemo(() => {
+    if (!startDate || !endDate) return false;
+    const selectedStart = toStartOfDay(startDate);
+    const selectedEnd = toEndOfDay(endDate);
+
+    return availability.some((slot) => {
+      if (slot.availabilityType !== "booked") return false;
+      const slotStart = toStartOfDay(slot.effectiveStartTime || slot.actualStartTime || slot.startDate);
+      const slotEnd = toEndOfDay(slot.effectiveEndTime || slot.actualEndTime || slot.endDate);
+      return selectedStart <= slotEnd && selectedEnd >= slotStart;
+    });
+  }, [availability, startDate, endDate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
 
     if (validDays <= 0) {
-      setError("End date must be at least one day after the start date.");
+      setError("End date cannot be before start date.");
+      return;
+    }
+
+    if (hasSelectionConflict) {
+      setError("Selected dates overlap with an already approved/active booking.");
       return;
     }
 
@@ -142,7 +253,7 @@ export default function RequestRental() {
                 <input 
                   type="date" 
                   required
-                  min={today}
+                  min={todayInputValue}
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
                   className="w-full rounded-xl border border-gray-200 p-3.5 outline-none focus:ring-2 focus:ring-blue-600 bg-gray-50 text-sm font-bold text-gray-700 cursor-pointer transition-all"
@@ -153,12 +264,73 @@ export default function RequestRental() {
                 <input 
                   type="date" 
                   required
-                  min={startDate || today}
+                  min={startDate || todayInputValue}
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
                   className="w-full rounded-xl border border-gray-200 p-3.5 outline-none focus:ring-2 focus:ring-blue-600 bg-gray-50 text-sm font-bold text-gray-700 cursor-pointer transition-all"
                 />
               </div>
+            </div>
+            <div className="mt-5 space-y-2">
+              <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Availability timeline</p>
+              <div className="max-h-36 overflow-auto rounded-xl border border-gray-100 p-3 bg-gray-50 space-y-2">
+                {availability.length === 0 ? (
+                  <p className="text-xs text-green-700 font-bold">No blocking bookings from today to end of year.</p>
+                ) : availability.map((slot, index) => (
+                  <div key={`${slot.startDate}-${index}`} className="text-[11px] font-semibold text-gray-700">
+                    <span className={`inline-block px-2 py-0.5 rounded mr-2 text-[10px] uppercase tracking-wide ${
+                      slot.availabilityType === "booked" ? "bg-red-100 text-red-700" : "bg-yellow-100 text-yellow-700"
+                    }`}>
+                      {slot.availabilityType}
+                    </span>
+                    {new Date(slot.effectiveStartTime || slot.startDate).toLocaleDateString()} - {new Date(slot.effectiveEndTime || slot.endDate).toLocaleDateString()}
+                  </div>
+                ))}
+              </div>
+              <div className="rounded-xl border border-gray-100 p-3 bg-white">
+                <div className="flex items-center gap-3 mb-3 text-[10px] font-black uppercase tracking-widest">
+                  <span className="inline-flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-100 border border-red-200"></span>Booked</span>
+                  <span className="inline-flex items-center gap-1"><span className="w-3 h-3 rounded bg-yellow-100 border border-yellow-200"></span>Pending</span>
+                  <span className="inline-flex items-center gap-1"><span className="w-3 h-3 rounded bg-gray-100 border border-gray-200"></span>Open</span>
+                </div>
+                {calendarWindow && (
+                  <p className="text-[10px] text-gray-500 font-bold mb-3">
+                    Showing {new Date(calendarWindow.from).toLocaleDateString()} to {new Date(calendarWindow.to).toLocaleDateString()}.
+                  </p>
+                )}
+                <div className="max-h-72 overflow-auto space-y-3">
+                  {calendarMonths.map((month) => (
+                    <div key={month.key}>
+                      <p className="text-[11px] font-black text-gray-700 mb-2">{month.label}</p>
+                      <div className="grid grid-cols-7 gap-1 text-[10px]">
+                        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
+                          <div key={`${month.key}-h-${d}-${i}`} className="text-center text-gray-400 font-bold">{d}</div>
+                        ))}
+                        {month.days.map((day, idx) => {
+                          if (!day) return <div key={`${month.key}-blank-${idx}`} className="h-6" />;
+                          const statusClasses = day.status === "booked"
+                            ? "bg-red-100 text-red-700 border-red-200"
+                            : day.status === "pending"
+                              ? "bg-yellow-100 text-yellow-700 border-yellow-200"
+                              : "bg-gray-50 text-gray-700 border-gray-200";
+
+                          return (
+                            <div
+                              key={`${month.key}-${day.key}`}
+                              className={`h-6 rounded border flex items-center justify-center font-bold ${statusClasses} ${day.isPast ? 'opacity-35' : ''}`}
+                            >
+                              {day.day}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {hasSelectionConflict && (
+                <p className="text-xs text-red-600 font-bold">Your selected range conflicts with a booked window.</p>
+              )}
             </div>
           </div>
 
@@ -240,7 +412,7 @@ export default function RequestRental() {
             <Button 
               type="submit" 
               variant="primary"
-              disabled={validDays <= 0 || submitting}
+              disabled={validDays <= 0 || hasSelectionConflict || submitting}
               isLoading={submitting}
               className={`!w-full !py-4 !rounded-xl text-xs uppercase tracking-widest font-black transition-all ${
                 validDays <= 0 ? '!bg-gray-200 !text-gray-400 !cursor-not-allowed shadow-none' : '!bg-blue-600 hover:!bg-blue-700 shadow-xl shadow-blue-100'

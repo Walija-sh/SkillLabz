@@ -39,6 +39,13 @@ const RentalSchema = new mongoose.Schema(
     type: Date,
     required: [true, "Rental end date is required"]
   },
+  // Actual timeline is recorded by OTP verification events.
+  actualStartTime: {
+    type: Date
+  },
+  actualEndTime: {
+    type: Date
+  },
 
   rentalDays: {
     type: Number
@@ -80,6 +87,7 @@ const RentalSchema = new mongoose.Schema(
   rentalStatus: {
     type: String,
     enum: [
+      "requested",
       "pending",
       "approved",
       "rejected",
@@ -101,6 +109,74 @@ const RentalSchema = new mongoose.Schema(
   ownerNote: {
     type: String,
     maxlength: [300, "Note cannot exceed 300 characters"]
+  },
+  contract: {
+    baseTerms: {
+      type: String
+    },
+    additionalTerms: {
+      type: String,
+      maxlength: [500, "Additional terms cannot exceed 500 characters"]
+    },
+    agreedAt: {
+      type: Date
+    },
+    version: {
+      type: Number,
+      default: 1
+    }
+  },
+  cancelledBy: {
+    type: String,
+    enum: ["renter", "owner"]
+  },
+  cancellationReason: {
+    type: String,
+    trim: true,
+    maxlength: [500, "Cancellation reason cannot exceed 500 characters"]
+  },
+  cancelledAt: {
+    type: Date
+  },
+  cancellationLogs: [
+    {
+      cancelledBy: {
+        type: String,
+        enum: ["renter", "owner"]
+      },
+      reason: {
+        type: String,
+        required: true,
+        trim: true,
+        maxlength: [500, "Cancellation reason cannot exceed 500 characters"]
+      },
+      cancelledAt: {
+        type: Date,
+        default: Date.now
+      },
+      wasEarlyTermination: {
+        type: Boolean,
+        default: false
+      },
+      isLastMinute: {
+        type: Boolean,
+        default: false
+      }
+    }
+  ],
+  rentalIssues: {
+    lateReturn: {
+      type: Boolean,
+      default: false
+    },
+    noShow: {
+      type: Boolean,
+      default: false
+    },
+    earlyTermination: {
+      type: Boolean,
+      default: false
+    }
   },
 
   // -------------------------
@@ -129,14 +205,18 @@ const RentalSchema = new mongoose.Schema(
 );
 
 RentalSchema.index({ item: 1, startDate: 1, endDate: 1 });
+RentalSchema.index({ item: 1, actualStartTime: 1, actualEndTime: 1 });
 RentalSchema.index({ renter: 1, rentalStatus: 1 });
 RentalSchema.index({ owner: 1, rentalStatus: 1 });
 
 // hooks
 // validate date
 RentalSchema.pre("validate", function () {
-  if (this.startDate >= this.endDate) {
+  if (this.startDate > this.endDate) {
     return new AppError("End date must be after start date", 400);
+  }
+  if (this.actualStartTime && this.actualEndTime && this.actualStartTime > this.actualEndTime) {
+    return new AppError("Actual end time must be after actual start time", 400);
   }
 });
 
@@ -145,7 +225,7 @@ RentalSchema.pre("save", function () {
   if (!this.startDate || !this.endDate) return;
 
   const diffTime = this.endDate - this.startDate;
-  this.rentalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  this.rentalDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
 
   if (this.pricePerDay && this.rentalDays) {
     // Base Price Calculation
@@ -160,7 +240,7 @@ RentalSchema.pre("save", function () {
 
 // check if rental can be approved
 RentalSchema.methods.canBeApproved = function () {
-  return this.rentalStatus === "pending";
+  return ["pending", "requested"].includes(this.rentalStatus);
 };
 // check if can start
 RentalSchema.methods.canStart = function () {
@@ -173,7 +253,7 @@ RentalSchema.methods.canComplete = function () {
 
 // can cancel
 RentalSchema.methods.canCancel = function () {
-  return ["pending", "approved"].includes(this.rentalStatus);
+  return ["pending", "requested", "approved", "active"].includes(this.rentalStatus);
 };
 
 const Rental = mongoose.models.Rental || mongoose.model("Rental", RentalSchema);

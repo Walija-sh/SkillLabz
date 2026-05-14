@@ -4,6 +4,7 @@ import AppError from "../utils/appError.js";
 import cloudinary from "../config/cloudinary.js";
 import buildItemFilters from "../utils/buildItemFilters.js";
 import Rental from "../models/Rental.js";
+import { getAvailabilityStatus } from "../utils/rentalAvailability.js";
 
 // -------------------------
 // CREATE ITEM
@@ -130,6 +131,64 @@ export const getSingleItem = catchAsync(async (req, res, next) => {
   res.status(200).json({
     status: "success",
     item
+  });
+});
+
+// -------------------------
+// GET ITEM AVAILABILITY CALENDAR
+// -------------------------
+export const getItemAvailability = catchAsync(async (req, res, next) => {
+  const item = await Item.findById(req.params.id).select("_id");
+  if (!item) {
+    return next(new AppError("Item not found", 404));
+  }
+
+  const now = new Date();
+  const calendarStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+  const calendarEnd = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+
+  const rentals = await Rental.find({
+    item: req.params.id,
+    rentalStatus: { $in: ["requested", "pending", "approved", "active"] }
+  })
+    .select("startDate endDate actualStartTime actualEndTime rentalStatus")
+    .sort("startDate");
+
+  // Return only windows intersecting [today, end-of-year] to avoid misleading past ranges.
+  const bookedRanges = rentals
+    .map((rental) => {
+      const availabilityType = getAvailabilityStatus(rental.rentalStatus);
+      if (!availabilityType) return null;
+
+      const sourceStart = rental.actualStartTime || rental.startDate;
+      const sourceEnd = rental.actualEndTime || rental.endDate;
+      if (!sourceStart || !sourceEnd) return null;
+      if (sourceEnd < calendarStart || sourceStart > calendarEnd) return null;
+
+      const clippedStart = sourceStart < calendarStart ? calendarStart : sourceStart;
+      const clippedEnd = sourceEnd > calendarEnd ? calendarEnd : sourceEnd;
+
+      return {
+        startDate: rental.startDate,
+        endDate: rental.endDate,
+        actualStartTime: rental.actualStartTime || null,
+        actualEndTime: rental.actualEndTime || null,
+        effectiveStartTime: clippedStart,
+        effectiveEndTime: clippedEnd,
+        status: rental.rentalStatus,
+        availabilityType
+      };
+    })
+    .filter(Boolean);
+
+  res.status(200).json({
+    status: "success",
+    itemId: req.params.id,
+    calendarWindow: {
+      from: calendarStart,
+      to: calendarEnd
+    },
+    bookedRanges
   });
 });
 

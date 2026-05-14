@@ -1,12 +1,18 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { logout } from '../../store/authSlice'; 
 import Button from '../common/Button';
+import notificationService from '../../services/notification.service';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isNotifLoading, setIsNotifLoading] = useState(false);
+  const notificationMenuRef = useRef(null);
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -19,6 +25,45 @@ export default function Navbar() {
   
   // Safely grab the profile image URL if it exists
   const profileImageUrl = userData?.profileImage?.url;
+
+  const fetchNotifications = useCallback(async () => {
+    if (!isLoggedIn) return;
+    try {
+      setIsNotifLoading(true);
+      const response = await notificationService.getMyNotifications();
+      setNotifications(response.notifications || []);
+      setUnreadCount(response.unreadCount || 0);
+    } catch (error) {
+      console.error("Failed to load notifications", error);
+    } finally {
+      setIsNotifLoading(false);
+    }
+  }, [isLoggedIn]);
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setNotifications([]);
+      setUnreadCount(0);
+      return;
+    }
+
+    fetchNotifications();
+    const intervalId = setInterval(fetchNotifications, 15000);
+    return () => clearInterval(intervalId);
+  }, [isLoggedIn, fetchNotifications]);
+
+  useEffect(() => {
+    const onClickOutside = (event) => {
+      if (
+        notificationMenuRef.current &&
+        !notificationMenuRef.current.contains(event.target)
+      ) {
+        setIsNotificationOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, []);
 
   const publicNavigation = [
     { name: 'How it Works', href: '/#how-it-works' },
@@ -53,6 +98,37 @@ export default function Navbar() {
     navigate('/login');
     setIsOpen(false);
     setIsProfileMenuOpen(false);
+  };
+
+  const handleNotificationClick = async (notification) => {
+    if (!notification) return;
+
+    if (!notification.isRead) {
+      try {
+        await notificationService.markAsRead(notification._id);
+        setNotifications((prev) =>
+          prev.map((item) =>
+            item._id === notification._id ? { ...item, isRead: true } : item
+          )
+        );
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      } catch (error) {
+        console.error("Failed to mark notification as read", error);
+      }
+    }
+
+    setIsNotificationOpen(false);
+    navigate(notification.actionLink || "/my-rentals");
+  };
+
+  const markAllAsRead = async () => {
+    try {
+      await notificationService.markAllAsRead();
+      setNotifications((prev) => prev.map((item) => ({ ...item, isRead: true })));
+      setUnreadCount(0);
+    } catch (error) {
+      console.error("Failed to mark all notifications as read", error);
+    }
   };
 
   return (
@@ -95,44 +171,98 @@ export default function Navbar() {
                   <Link to="/register"><Button className="px-6 rounded-lg font-bold">Sign Up</Button></Link>
                 </div>
               ) : (
-                <div className="relative flex items-center gap-3 ml-2 cursor-pointer" onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}>
-                  
-                  {/* Dynamic Avatar */}
-                  <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-lg overflow-hidden border border-gray-100">
-                    {profileImageUrl ? (
-                      <img src={profileImageUrl} alt="Profile" className="w-full h-full object-cover" />
-                    ) : (
-                      userInitial
+                <div className="relative flex items-center gap-3 ml-2" ref={notificationMenuRef}>
+                  <button
+                    type="button"
+                    onClick={() => setIsNotificationOpen((prev) => !prev)}
+                    className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                    aria-label="Notifications"
+                  >
+                    <svg className="h-6 w-6 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0a3 3 0 11-6 0m6 0H9" />
+                    </svg>
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center">
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </span>
                     )}
-                  </div>
-                  
-                  <span className="text-base font-bold text-gray-900">{registeredName}</span>
-                  
-                  {isProfileMenuOpen && (
-                    <div className="absolute top-full right-0 mt-3 w-64 bg-white border border-gray-100 rounded-xl shadow-xl py-2 z-50">
-                      {/* FIXED: Now links to /profile */}
-                      <Link 
-                        to="/profile" 
-                        onClick={() => setIsProfileMenuOpen(false)}
-                        className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 border-b border-gray-50 transition-colors"
-                      >
-                        <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold overflow-hidden">
-                          {profileImageUrl ? (
-                            <img src={profileImageUrl} alt="Profile" className="w-full h-full object-cover" />
-                          ) : (
-                            userInitial
-                          )}
-                        </div>
-                        <div className="flex flex-col overflow-hidden">
-                          <span className="text-sm font-bold text-gray-900 truncate">{registeredName}</span>
-                          <span className="text-xs text-gray-500 truncate">{userData?.email}</span>
-                        </div>
-                      </Link>
-                      <button onClick={handleLogout} className="w-full text-left px-4 py-3 text-sm text-red-600 font-bold hover:bg-gray-50">
-                        Logout
-                      </button>
+                  </button>
+
+                  {isNotificationOpen && (
+                    <div className="absolute top-full right-24 mt-3 w-96 max-w-[90vw] bg-white border border-gray-100 rounded-xl shadow-xl py-2 z-50">
+                      <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100">
+                        <span className="text-sm font-bold text-gray-900">Notifications</span>
+                        <button
+                          type="button"
+                          onClick={markAllAsRead}
+                          className="text-xs font-semibold text-blue-600 hover:text-blue-700"
+                        >
+                          Mark all read
+                        </button>
+                      </div>
+                      <div className="max-h-96 overflow-y-auto">
+                        {isNotifLoading ? (
+                          <p className="px-4 py-6 text-sm text-gray-500">Loading...</p>
+                        ) : notifications.length === 0 ? (
+                          <p className="px-4 py-6 text-sm text-gray-500">No notifications yet.</p>
+                        ) : (
+                          notifications.map((notification) => (
+                            <button
+                              type="button"
+                              key={notification._id}
+                              onClick={() => handleNotificationClick(notification)}
+                              className={`w-full text-left px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors ${
+                                notification.isRead ? "bg-white" : "bg-blue-50/60"
+                              }`}
+                            >
+                              <p className="text-sm font-semibold text-gray-900">{notification.title}</p>
+                              <p className="text-xs text-gray-600 mt-1">{notification.message}</p>
+                              <p className="text-[11px] text-gray-400 mt-1">
+                                {new Date(notification.createdAt).toLocaleString()}
+                              </p>
+                            </button>
+                          ))
+                        )}
+                      </div>
                     </div>
                   )}
+
+                  <div className="relative flex items-center gap-3 cursor-pointer" onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}>
+                    <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-lg overflow-hidden border border-gray-100">
+                      {profileImageUrl ? (
+                        <img src={profileImageUrl} alt="Profile" className="w-full h-full object-cover" />
+                      ) : (
+                        userInitial
+                      )}
+                    </div>
+
+                    <span className="text-base font-bold text-gray-900">{registeredName}</span>
+
+                    {isProfileMenuOpen && (
+                      <div className="absolute top-full right-0 mt-3 w-64 bg-white border border-gray-100 rounded-xl shadow-xl py-2 z-50">
+                        <Link
+                          to="/profile"
+                          onClick={() => setIsProfileMenuOpen(false)}
+                          className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 border-b border-gray-50 transition-colors"
+                        >
+                          <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold overflow-hidden">
+                            {profileImageUrl ? (
+                              <img src={profileImageUrl} alt="Profile" className="w-full h-full object-cover" />
+                            ) : (
+                              userInitial
+                            )}
+                          </div>
+                          <div className="flex flex-col overflow-hidden">
+                            <span className="text-sm font-bold text-gray-900 truncate">{registeredName}</span>
+                            <span className="text-xs text-gray-500 truncate">{userData?.email}</span>
+                          </div>
+                        </Link>
+                        <button onClick={handleLogout} className="w-full text-left px-4 py-3 text-sm text-red-600 font-bold hover:bg-gray-50">
+                          Logout
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

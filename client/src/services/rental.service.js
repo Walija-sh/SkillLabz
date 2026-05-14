@@ -32,9 +32,13 @@ const rentalService = {
   },
 
   // 4. Approve a pending request
-  approveRental: async (id) => {
+  approveRental: async (id, additionalTerms) => {
     try {
-      const response = await apiClient.patch(`/rentals/${id}/approve`);
+      const payload = {};
+      if (typeof additionalTerms === "string") {
+        payload.additionalTerms = additionalTerms;
+      }
+      const response = await apiClient.patch(`/rentals/${id}/approve`, payload);
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: "Failed to approve rental." };
@@ -68,6 +72,22 @@ const rentalService = {
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: "Failed to complete rental." };
+    }
+  },
+  cancelRental: async (id, cancellationReason) => {
+    try {
+      const response = await apiClient.patch(`/rentals/${id}/cancel`, { cancellationReason });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Failed to cancel rental." };
+    }
+  },
+  getItemAvailability: async (id) => {
+    try {
+      const response = await apiClient.get(`/items/${id}/availability`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Failed to load item availability." };
     }
   },
 
@@ -107,6 +127,24 @@ const rentalService = {
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: "Failed to verify return OTP." };
+    }
+  },
+
+  getRentalById: async (id) => {
+    try {
+      const response = await apiClient.get(`/rentals/${id}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Failed to fetch rental details." };
+    }
+  },
+
+  agreeContract: async (id) => {
+    try {
+      const response = await apiClient.patch(`/rentals/${id}/agree-contract`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Failed to agree to contract." };
     }
   }
 };

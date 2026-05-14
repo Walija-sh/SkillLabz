@@ -10,6 +10,7 @@ import ItemRouter from './routes/item.routes.js';
 import RentalRouter from './routes/rental.routes.js';
 import UserRouter from "./routes/user.routes.js";
 import ReviewRouter from "./routes/review.routes.js";
+import NotificationRouter from "./routes/notification.routes.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -31,6 +32,7 @@ app.use("/api/items", ItemRouter);
 app.use("/api/rentals", RentalRouter);
 app.use("/api/users", UserRouter);
 app.use("/api/reviews", ReviewRouter);
+app.use("/api/notifications", NotificationRouter);
 // test route
 
 app.get('/api', (req, res) => res.send('SkillLabz API Running'));

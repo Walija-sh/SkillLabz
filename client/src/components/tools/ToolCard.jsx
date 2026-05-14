@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 export default function ToolCard({ item }) {
   return (
     <Link 
-      to={`/tools/${item._id}`} 
+      to={`/items/${item._id}`} 
       className="group bg-white rounded-xl sm:rounded-2xl shadow-sm hover:shadow-xl border border-gray-100 transition-all overflow-hidden flex flex-col relative"
     >
       {/* Image Container - Height reduced for mobile (h-32) */}

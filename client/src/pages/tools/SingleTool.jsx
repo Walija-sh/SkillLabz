@@ -40,7 +40,7 @@ export default function SingleTool() {
       <div className="max-w-7xl mx-auto px-4 py-12 text-center">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">Oops!</h2>
         <p className="text-gray-500 mb-6">{error || 'Item not found.'}</p>
-        <Button onClick={() => navigate('/explore')}>Back to Browse</Button>
+        <Button onClick={() => navigate('/browse-tools')}>Back to Browse</Button>
       </div>
     );
   }
@@ -184,7 +184,7 @@ export default function SingleTool() {
 
               <Button 
                 className="w-full py-4 bg-blue-600 text-white hover:bg-blue-700 text-lg font-black shadow-lg shadow-blue-200 transition-all rounded-xl"
-                onClick={() => navigate(`/tools/${item._id}/rent`)}
+                onClick={() => navigate(`/items/${item._id}/rent`)}
               >
                 Request to Rent
               </Button>

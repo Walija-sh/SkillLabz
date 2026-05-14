@@ -3,8 +3,11 @@ import { Link } from "react-router-dom";
 import rentalService from '../../services/rental.service';
 import reviewService from "../../services/review.service";
 import Stars from "../../components/reviews/Stars";
+import ContractView from "../../components/rentals/ContractView";
+import { useSelector } from "react-redux";
 
 export default function MyRentals() {
+  const userId = useSelector((state) => state.auth.userData?._id);
   const [rentals, setRentals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -16,6 +19,13 @@ export default function MyRentals() {
   const [otpValue, setOtpValue] = useState("");
   const [otpSubmitting, setOtpSubmitting] = useState(false);
   const [otpMessage, setOtpMessage] = useState({ type: "", text: "" });
+  const [cancelModal, setCancelModal] = useState({ open: false, rental: null });
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelSubmitting, setCancelSubmitting] = useState(false);
+  const [cancelMessage, setCancelMessage] = useState({ type: "", text: "" });
+  const [contractModal, setContractModal] = useState({ open: false, rental: null });
+  const [contractSubmitting, setContractSubmitting] = useState(false);
+  const [contractError, setContractError] = useState("");
   
   // Tabs: 'pending', 'active', 'completed'
   // Note: We'll map "approved" to the "active" tab so users know they need to pick it up!
@@ -122,16 +132,81 @@ export default function MyRentals() {
     }
   };
 
+  const canCancelRental = (status) => ['pending', 'requested', 'approved', 'active'].includes(status);
+
+  const openCancelModal = (rental) => {
+    setCancelModal({ open: true, rental });
+    setCancelReason("");
+    setCancelSubmitting(false);
+    setCancelMessage({ type: "", text: "" });
+  };
+
+  const closeCancelModal = () => {
+    setCancelModal({ open: false, rental: null });
+    setCancelReason("");
+    setCancelSubmitting(false);
+    setCancelMessage({ type: "", text: "" });
+  };
+
+  const submitCancellation = async () => {
+    if (!cancelModal.rental?._id) return;
+    if (!cancelReason.trim()) {
+      setCancelMessage({ type: "error", text: "Cancellation reason is required." });
+      return;
+    }
+
+    setCancelSubmitting(true);
+    setCancelMessage({ type: "", text: "" });
+    try {
+      const updated = await rentalService.cancelRental(cancelModal.rental._id, cancelReason.trim());
+      setRentals((prev) =>
+        prev.map((r) => (r._id === cancelModal.rental._id ? { ...r, ...updated.rental } : r))
+      );
+      setCancelMessage({ type: "success", text: "Rental cancelled successfully." });
+      setTimeout(() => closeCancelModal(), 700);
+    } catch (err) {
+      setCancelMessage({ type: "error", text: err?.message || "Failed to cancel rental." });
+    } finally {
+      setCancelSubmitting(false);
+    }
+  };
+
+  const openContractModal = async (rentalId) => {
+    setContractError("");
+    setContractSubmitting(false);
+    try {
+      const response = await rentalService.getRentalById(rentalId);
+      setContractModal({ open: true, rental: response.rental });
+    } catch (err) {
+      setContractError(err?.message || "Failed to load contract.");
+    }
+  };
+
+  const handleAgreeContract = async () => {
+    if (!contractModal.rental?._id) return;
+    setContractSubmitting(true);
+    setContractError("");
+    try {
+      const response = await rentalService.agreeContract(contractModal.rental._id);
+      setContractModal({ open: true, rental: response.rental });
+      setRentals((prev) => prev.map((r) => (r._id === response.rental._id ? { ...r, contract: response.rental.contract } : r)));
+    } catch (err) {
+      setContractError(err?.message || "Failed to agree to contract.");
+    } finally {
+      setContractSubmitting(false);
+    }
+  };
+
   // Filter logic based on the selected tab
   const filteredRentals = rentals.filter(rental => {
-    if (activeTab === 'pending') return rental.rentalStatus === 'pending';
+    if (activeTab === 'pending') return ['pending', 'requested'].includes(rental.rentalStatus);
     if (activeTab === 'active') return ['approved', 'active'].includes(rental.rentalStatus);
     if (activeTab === 'completed') return ['completed', 'rejected', 'cancelled'].includes(rental.rentalStatus);
     return true;
   });
 
   // Calculate counts for the tabs
-  const pendingCount = rentals.filter(r => r.rentalStatus === 'pending').length;
+  const pendingCount = rentals.filter(r => ['pending', 'requested'].includes(r.rentalStatus)).length;
   const activeCount = rentals.filter(r => ['approved', 'active'].includes(r.rentalStatus)).length;
   const completedCount = rentals.filter(r => ['completed', 'rejected', 'cancelled'].includes(r.rentalStatus)).length;
 
@@ -148,6 +223,7 @@ export default function MyRentals() {
       case 'approved':
         return <span className="bg-blue-500 text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">Approved</span>;
       case 'pending':
+      case 'requested':
         return <span className="bg-yellow-500 text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">Pending</span>;
       case 'completed':
         return <span className="bg-gray-500 text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">Completed</span>;
@@ -236,8 +312,26 @@ export default function MyRentals() {
                   
                   {/* Title & Dates */}
                   <div>
-                    <h2 className="text-lg font-bold text-gray-900">{rental.item?.title || 'Unknown Tool'}</h2>
+                    <h2 className="text-lg font-bold text-gray-900">
+                      {rental.item?._id ? (
+                        <Link to={`/items/${rental.item._id}`} className="hover:text-blue-600">
+                          {rental.item?.title || 'Unknown Tool'}
+                        </Link>
+                      ) : (
+                        'Unknown Tool'
+                      )}
+                    </h2>
                     <p className="text-sm text-gray-500 mt-1 mb-4">{rental.item?.location?.city || 'Location unavailable'}</p>
+                    <p className="text-xs text-gray-500 mb-3">
+                      Owner:{" "}
+                      {rental.owner?._id || rental.owner ? (
+                        <Link to={`/users/${rental.owner?._id || rental.owner}`} className="text-blue-600 hover:underline">
+                          {rental.owner?.username || rental.owner?.fullName || "View profile"}
+                        </Link>
+                      ) : (
+                        "Deleted user"
+                      )}
+                    </p>
                     
                     <div>
                       <p className="text-xs text-gray-400 font-medium mb-1">Rental Period</p>
@@ -259,16 +353,18 @@ export default function MyRentals() {
 
               {/* Action Buttons */}
               <div className="mt-6 flex flex-wrap gap-3 border-t border-gray-100 pt-5">
-                <button className="flex items-center gap-2 bg-[#f06424] hover:bg-orange-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-colors">
+                <Link to={`/rentals/${rental._id}`} className="flex items-center gap-2 bg-[#f06424] hover:bg-orange-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-colors">
                   View Details
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
                   </svg>
-                </button>
+                </Link>
                 
-                <button className="flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-900 border border-gray-200 px-5 py-2.5 rounded-xl text-sm font-bold transition-colors">
-                  Contact Owner
-                </button>
+                {rental.owner ? (
+                  <Link to={`/users/${rental.owner}`} className="flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-900 border border-gray-200 px-5 py-2.5 rounded-xl text-sm font-bold transition-colors">
+                    View Owner
+                  </Link>
+                ) : null}
 
                 {/* OTP actions */}
                 {rental.rentalStatus === "approved" && (
@@ -286,6 +382,15 @@ export default function MyRentals() {
                     className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white px-5 py-2.5 rounded-xl text-sm font-black transition-colors uppercase tracking-widest"
                   >
                     Enter Return OTP
+                  </button>
+                )}
+
+                {canCancelRental(rental.rentalStatus) && (
+                  <button
+                    onClick={() => openCancelModal(rental)}
+                    className="flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-100 px-5 py-2.5 rounded-xl text-sm font-black transition-colors uppercase tracking-widest"
+                  >
+                    Cancel Rental
                   </button>
                 )}
 
@@ -307,7 +412,10 @@ export default function MyRentals() {
                   </>
                 )}
                 
-                <button className="flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-900 border border-gray-200 px-5 py-2.5 rounded-xl text-sm font-bold transition-colors">
+                <button
+                  onClick={() => openContractModal(rental._id)}
+                  className="flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-900 border border-gray-200 px-5 py-2.5 rounded-xl text-sm font-bold transition-colors"
+                >
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 text-gray-500">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
                   </svg>
@@ -464,6 +572,91 @@ export default function MyRentals() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancellation modal */}
+      {cancelModal.open && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-md">
+          <div className="bg-white rounded-[2.5rem] p-8 max-w-md w-full shadow-2xl border border-gray-100">
+            <div className="flex items-start justify-between gap-4 mb-6">
+              <div>
+                <h3 className="text-2xl font-black text-gray-900 uppercase tracking-tight">Cancel Rental</h3>
+                <p className="text-gray-500 font-medium mt-1">
+                  Tool: <span className="font-bold text-gray-900">{cancelModal.rental?.item?.title || "Rental"}</span>
+                </p>
+              </div>
+              <button onClick={closeCancelModal} className="p-2 rounded-xl hover:bg-gray-50 text-gray-500">
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {cancelMessage.text && (
+              <div
+                className={`mb-5 p-4 rounded-2xl border font-bold ${
+                  cancelMessage.type === "success"
+                    ? "bg-green-50 text-green-700 border-green-100"
+                    : "bg-red-50 text-red-700 border-red-100"
+                }`}
+              >
+                {cancelMessage.text}
+              </div>
+            )}
+
+            <div className="space-y-5">
+              <div>
+                <p className="text-xs font-black uppercase tracking-widest text-gray-400 mb-2">Reason</p>
+                <textarea
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  rows={4}
+                  placeholder="Why are you cancelling this rental?"
+                  className="w-full px-4 py-3 rounded-2xl border-2 border-gray-100 bg-white focus:border-red-500 outline-none font-medium resize-none"
+                />
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <button
+                  disabled={cancelSubmitting}
+                  onClick={submitCancellation}
+                  className="flex-1 py-4 bg-red-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-red-700 disabled:opacity-60"
+                >
+                  {cancelSubmitting ? "Cancelling..." : "Confirm Cancellation"}
+                </button>
+                <button
+                  disabled={cancelSubmitting}
+                  onClick={closeCancelModal}
+                  className="flex-1 py-4 bg-gray-100 text-gray-600 rounded-2xl font-black uppercase tracking-widest hover:bg-gray-200 disabled:opacity-60"
+                >
+                  Keep Rental
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {contractModal.open && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-md">
+          <div className="bg-white rounded-2xl p-6 max-w-2xl w-full shadow-2xl border border-gray-100 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-gray-900">Rental Contract</h3>
+              <button
+                onClick={() => setContractModal({ open: false, rental: null })}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                Close
+              </button>
+            </div>
+            <ContractView
+              rental={contractModal.rental}
+              isRenter={String(contractModal.rental?.renter?._id || contractModal.rental?.renter) === String(userId)}
+              onAgree={handleAgreeContract}
+              submitting={contractSubmitting}
+              agreementError={contractError}
+            />
           </div>
         </div>
       )}
