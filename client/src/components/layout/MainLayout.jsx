@@ -10,7 +10,7 @@ export default function MainLayout() {
   const isHiddenRoute = hiddenRoutes.includes(location.pathname);
 
   return (
-    <div className="flex min-h-screen flex-col bg-gray-50">
+    <div className="flex min-h-screen flex-col bg-[#ECEFF1]">
       {/* Conditionally render the Navbar */}
       {!isHiddenRoute && <Navbar />}
       

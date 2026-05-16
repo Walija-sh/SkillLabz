@@ -59,7 +59,7 @@ const App = () => {
   // Show a full-screen loading spinner while checking auth status
   if (isInitializing) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50/50">
+      <div className="min-h-screen flex items-center justify-center bg-[#ECEFF1]">
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-blue-600"></div>
       </div>
     );
