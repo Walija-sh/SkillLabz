@@ -14,3 +14,17 @@ api.interceptors.request.use((config) => {
 });
 
 export default api;
+
+// Response interceptor for handling common errors
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Unauthorized - token may have expired
+      localStorage.removeItem('adminToken');
+      localStorage.removeItem('adminUser');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
