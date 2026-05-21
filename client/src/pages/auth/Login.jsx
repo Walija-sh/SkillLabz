@@ -41,6 +41,8 @@ export default function Login() {
         
         // 3. Update Redux global state with user data
         dispatch(authLogin(result.data));
+        console.log(result.data);
+        
         
         // 4. Navigate directly to Home page after successful login
         navigate('/'); 

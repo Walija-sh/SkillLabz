@@ -1,12 +1,19 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { useSelector } from "react-redux";
+
 import publicUserService from "../../services/publicUser.service";
+import chatService from "../../services/chat.service";
+
 import Stars from "../../components/reviews/Stars";
 import ReviewsSection from "../../components/reviews/ReviewsSection";
 
 export default function PublicProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const currentUser = useSelector(
+  (state) => state.auth.userData
+);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -47,6 +54,35 @@ export default function PublicProfile() {
     const val = Number(rating?.averageRating);
     return Number.isFinite(val) ? val : 0;
   }, [rating]);
+
+  const handleMessageUser = async () => {
+
+  // User not logged in
+  if (!currentUser) {
+    navigate("/login");
+    return;
+  }
+
+  // Prevent self-chat
+  if (currentUser.id === user.id) {
+    return;
+  }
+
+  try {
+
+    const chatId =
+      await chatService.createOrGetChat(
+        currentUser.id,
+        user.id
+      );
+
+    navigate(`/messages?chat=${chatId}`);
+
+  } catch (error) {
+
+    console.error("Failed to create chat:", error);
+  }
+};
 
   if (loading) {
     return (
@@ -124,7 +160,29 @@ export default function PublicProfile() {
               <p className="text-gray-800 font-medium leading-relaxed">
                 {user?.bio || "No bio added yet."}
               </p>
+
             </div>
+            <div className="mt-6 flex justify-center sm:justify-start">
+
+  {currentUser?.id !== user.id && (
+
+    <button
+      onClick={handleMessageUser}
+      className="
+        px-6 py-3
+        bg-blue-600 text-white
+        rounded-2xl
+        font-black uppercase tracking-wider
+        hover:bg-blue-700
+        transition-colors
+      "
+    >
+      Message
+    </button>
+
+  )}
+
+</div>
           </div>
         </div>
 
