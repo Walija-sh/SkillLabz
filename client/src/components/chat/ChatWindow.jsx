@@ -93,6 +93,55 @@ const ChatWindow = ({
 
   }, [messages]);
 
+  useEffect(() => {
+
+  if (
+    !selectedChat?.chatId ||
+    !currentUser?.id
+  ) return;
+
+  chatService.markChatAsRead(
+    selectedChat.chatId,
+    currentUser.id
+  );
+
+}, [selectedChat, currentUser]);
+const formatDayLabel = (timestamp) => {
+
+  const date = new Date(timestamp);
+
+  const now = new Date();
+
+  const yesterday = new Date();
+
+  yesterday.setDate(now.getDate() - 1);
+
+  if (
+    date.toDateString() ===
+    now.toDateString()
+  ) {
+    return "Today";
+  }
+
+  if (
+    date.toDateString() ===
+    yesterday.toDateString()
+  ) {
+    return "Yesterday";
+  }
+
+  const isSameYear =
+    date.getFullYear() ===
+    now.getFullYear();
+
+  return date.toLocaleDateString([], {
+    day: "numeric",
+    month: "long",
+    ...(isSameYear
+      ? {}
+      : { year: "numeric" }),
+  });
+};
   return (
     <div className="
       flex flex-col
@@ -178,17 +227,65 @@ const ChatWindow = ({
         p-4 space-y-3 bg-gray-50
       ">
 
-        {messages.map((message) => (
+      {messages.map((message, index) => {
 
-          <MessageBubble
-            key={message.id}
-            message={message}
-            isOwnMessage={
-              message.senderId === currentUser.id
-            }
-          />
+  const currentLabel =
+    formatDayLabel(message.timestamp);
 
-        ))}
+  const previousMessage =
+    messages[index - 1];
+
+  const previousLabel =
+    previousMessage
+      ? formatDayLabel(
+          previousMessage.timestamp
+        )
+      : null;
+
+  const showDateSeparator =
+    currentLabel !== previousLabel;
+
+  return (
+
+    <div key={message.id}>
+
+      {showDateSeparator && (
+
+        <div className="
+          flex items-center gap-3
+          my-4
+        ">
+
+          <div className="
+            flex-1 h-px bg-gray-300
+          " />
+
+          <span className="
+            text-xs font-semibold
+            text-gray-500
+            whitespace-nowrap
+          ">
+            {currentLabel}
+          </span>
+
+          <div className="
+            flex-1 h-px bg-gray-300
+          " />
+
+        </div>
+
+      )}
+
+      <MessageBubble
+        message={message}
+        isOwnMessage={
+          message.senderId === currentUser.id
+        }
+      />
+
+    </div>
+  );
+})}
 
         <div ref={bottomRef} />
 

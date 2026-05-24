@@ -3,6 +3,7 @@ const MessageBubble = ({
   isOwnMessage,
 }) => {
 
+  
   return (
     <div
       className={`
@@ -35,7 +36,16 @@ const MessageBubble = ({
             }
           `}
         >
-          {new Date(message.timestamp).toLocaleTimeString()}
+        
+          {new Date(
+message.timestamp
+)
+  .toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  })
+  .toUpperCase()}
         </div>
 
       </div>

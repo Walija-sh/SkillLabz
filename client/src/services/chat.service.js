@@ -34,16 +34,21 @@ const createOrGetChat = async (currentUserId, otherUserId) => {
   // Create chat if doesn't exist
   if (!snapshot.exists()) {
 
-    await set(chatRef, {
-      participants: {
-        [currentUserId]: true,
-        [otherUserId]: true,
-      },
+ await set(chatRef, {
+  participants: {
+    [currentUserId]: true,
+    [otherUserId]: true,
+  },
 
-      createdAt: Date.now(),
+  createdAt: Date.now(),
 
-      lastMessage: null,
-    });
+  lastMessage: null,
+
+  unreadCounts: {
+    [currentUserId]: 0,
+    [otherUserId]: 0,
+  },
+});
   }
 
   return chatId;
@@ -61,7 +66,26 @@ const sendMessage = async ({
 
   if (!text.trim()) return;
 
-  const messagesRef = ref(db, `chats/${chatId}/messages`);
+  const chatRef = ref(db, `chats/${chatId}`);
+
+  const chatSnapshot = await get(chatRef);
+
+  if (!chatSnapshot.exists()) return;
+
+  const chatData = chatSnapshot.val();
+
+  const participantIds = Object.keys(
+    chatData.participants || {}
+  );
+
+  const receiverId = participantIds.find(
+    (id) => id !== senderId
+  );
+
+  const messagesRef = ref(
+    db,
+    `chats/${chatId}/messages`
+  );
 
   const newMessageRef = push(messagesRef);
 
@@ -71,14 +95,28 @@ const sendMessage = async ({
     timestamp: Date.now(),
   };
 
+  // Save message
   await set(newMessageRef, messageData);
 
-  // Update last message
-  await update(ref(db, `chats/${chatId}`), {
+  // Current unread count
+  const currentUnread =
+    chatData.unreadCounts?.[receiverId] || 0;
+
+  // Update chat metadata
+  await update(chatRef, {
+
     lastMessage: messageData,
+
+    unreadCounts: {
+
+      ...chatData.unreadCounts,
+
+      [receiverId]: currentUnread + 1,
+
+      [senderId]: 0,
+    },
   });
 };
-
 // ========================================
 // Subscribe to messages
 // ========================================
@@ -149,12 +187,33 @@ const subscribeToUserChats = (userId, callback) => {
   });
 };
 
+const markChatAsRead = async (
+  chatId,
+  userId
+) => {
+
+  const chatRef = ref(db, `chats/${chatId}`);
+
+  const snapshot = await get(chatRef);
+
+  if (!snapshot.exists()) return;
+
+  const chatData = snapshot.val();
+
+  await update(chatRef, {
+    unreadCounts: {
+      ...chatData.unreadCounts,
+      [userId]: 0,
+    },
+  });
+};
 const chatService = {
   generateChatId,
   createOrGetChat,
   sendMessage,
   subscribeToMessages,
   subscribeToUserChats,
+  markChatAsRead,
 };
 
 export default chatService;

@@ -155,6 +155,8 @@ const ChatSidebar = ({
             const isActive =
               selectedChat?.chatId ===
               chat.chatId;
+              const unreadCount =
+  chat.unreadCounts?.[currentUser.id] || 0;
 
             return (
 
@@ -219,20 +221,28 @@ const ChatSidebar = ({
 
                   {/* USERNAME */}
 
-                  <div className="
-                    font-semibold text-gray-900
-                    truncate
-                  ">
+                  <div className={`
+  truncate
+  ${
+    unreadCount > 0
+      ? "font-bold text-black"
+      : "font-semibold text-gray-900"
+  }
+`}>
                     {otherUser?.username ||
                       "Loading..."}
                   </div>
 
                   {/* LAST MESSAGE */}
 
-                  <div className="
-                    text-sm text-gray-500
-                    truncate
-                  ">
+                  <div className={`
+  text-sm truncate
+  ${
+    unreadCount > 0
+      ? "font-semibold text-gray-900"
+      : "text-gray-500"
+  }
+`}>
                     {chat.lastMessage?.text ||
                       "No messages yet"}
                   </div>
@@ -241,23 +251,49 @@ const ChatSidebar = ({
 
                 {/* TIME */}
 
-                {chat.lastMessage?.timestamp && (
+                <div className="
+  flex flex-col items-end gap-1
+">
 
-                  <div className="
-                    text-xs text-gray-400
-                    flex-shrink-0
-                  ">
+  {chat.lastMessage?.timestamp && (
 
-                    {new Date(
-                      chat.lastMessage.timestamp
-                    ).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
+    <div className="
+      text-xs text-gray-400
+      flex-shrink-0
+    ">
 
-                  </div>
+      {new Date(
+  chat.lastMessage.timestamp
+)
+  .toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  })
+  .toUpperCase()}
 
-                )}
+    </div>
+
+  )}
+
+  {unreadCount > 0 && (
+
+    <div className="
+      min-w-[20px]
+      h-5 px-1
+      rounded-full
+      bg-blue-600 text-white
+      text-xs font-bold
+      flex items-center justify-center
+    ">
+
+      {unreadCount}
+
+    </div>
+
+  )}
+
+</div>
 
               </button>
             );
