@@ -7,7 +7,7 @@ import toolService from '../../services/tool.service';
 export default function ListTool() {
   const navigate = useNavigate();
   const { userData: user } = useSelector((state) => state.auth);
-
+const [useDeposit, setUseDeposit] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     category: '',
@@ -16,8 +16,8 @@ export default function ListTool() {
     depositAmount: '',
     condition: '',
     offerSkillSession: false, 
-    skillSessionPrice: '',       // ✅ NEW
-    skillSessionDescription: '', // ✅ NEW
+    skillSessionPrice: '',      
+    skillSessionDescription: '', 
     images: null,
   });
 
@@ -84,12 +84,34 @@ export default function ListTool() {
     }
 
     try {
+      const price = Number(formData.pricePerDay);
+const deposit = useDeposit
+  ? Number(formData.depositAmount)
+  : 0;
+
+if (useDeposit && ( deposit < 0)) {
+  setUiState({
+    isLoading: false,
+    error: "Enter a valid deposit amount"
+  });
+  return;
+}
+
+if ( price < 0) {
+  setUiState({ isLoading: false, error: "Invalid price per day" });
+  return;
+}
+
+
       const submitData = new FormData();
       submitData.append('title', formData.title);
       submitData.append('category', formData.category);
       submitData.append('description', formData.description);
-      submitData.append('pricePerDay', Number(formData.pricePerDay));
-      submitData.append('depositAmount', Number(formData.depositAmount));
+ submitData.append('pricePerDay', price);
+submitData.append(
+  'depositAmount',
+  useDeposit ? Number(formData.depositAmount || 0) : 0
+);
       submitData.append('condition', formData.condition);
       
       // ✅ ADDED: Skill Session Data
@@ -204,7 +226,6 @@ export default function ListTool() {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div>
                     <label className="block text-xs font-black text-gray-500 mb-1.5 uppercase">Price/Day (Rs)*</label>
                     <input
@@ -218,20 +239,33 @@ export default function ListTool() {
                       required
                     />
                   </div>
+                
                   <div>
-                    <label className="block text-xs font-black text-gray-500 mb-1.5 uppercase">Security Deposit (Rs)*</label>
-                    <input
-                      name="depositAmount"
-                      type="number"
-                      placeholder="10000"
-                      className="w-full rounded-xl bg-gray-50 border border-gray-200 px-4 py-3 text-sm focus:bg-white focus:border-blue-500 focus:outline-none transition-all"
-                      value={formData.depositAmount}
-                      onChange={handleChange}
-                      disabled={uiState.isLoading}
-                      required
-                    />
+                    <div className="flex items-center gap-3 mb-1.5">
+  <input
+    type="checkbox"
+    checked={useDeposit}
+    onChange={(e) => setUseDeposit(e.target.checked)}
+  />
+  <span>Require security deposit</span>
+</div>
+                   {useDeposit && (
+                       <>
+                        <label className="block text-xs font-black text-gray-500 mb-1.5 uppercase">Deposit Amount</label>
+  <input
+    name="depositAmount"
+    type="number"
+    placeholder="Enter deposit (optional requirement)"
+    className="w-full rounded-xl bg-gray-50 border border-gray-200 px-4 py-3 text-sm"
+    value={formData.depositAmount}
+     disabled={uiState.isLoading}
+    onChange={handleChange}
+    min="1"
+    step='1'
+  />
+                       </>
+)}
                   </div>
-                </div>
 
                 <div>
                   <label className="block text-xs font-black text-gray-500 mb-1.5 uppercase">Condition*</label>

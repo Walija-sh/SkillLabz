@@ -380,14 +380,23 @@ export default function RequestRental() {
                 <span className="text-gray-900">PKR {basePrice}</span>
               </div>
               
-              {/* ✅ UPDATED: Security deposit UI reflects its conditional nature */}
-              <div className="flex justify-between text-gray-400 font-bold">
-                <span className="flex items-center gap-1.5">
-                  Security deposit 
-                  <span className="text-[9px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-500 uppercase tracking-tighter">Conditional</span>
-                </span>
-                <span>PKR {deposit}</span>
-              </div>
+              {/*  Security deposit */}
+             <div className="flex justify-between text-gray-400 font-bold">
+  <span className="flex items-center gap-1.5">
+    Security deposit
+    <span className="text-[9px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-500 uppercase tracking-tighter">
+      Conditional
+    </span>
+  </span>
+
+  {deposit > 0 ? (
+    <span className="text-gray-900 font-bold">PKR {deposit}</span>
+  ) : (
+    <span className="text-green-600 font-black uppercase text-[10px]">
+      Not required
+    </span>
+  )}
+</div>
 
               {addSkillSession && item.offerSkillSession && (
                 <div className="flex justify-between text-orange-600 font-black uppercase tracking-tighter">

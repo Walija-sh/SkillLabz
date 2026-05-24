@@ -117,9 +117,18 @@ export default function SingleTool() {
                 <span className="text-4xl font-black text-gray-900">Rs {item.pricePerDay}</span>
                 <span className="text-gray-500 font-medium ml-2 mb-1">/ day</span>
               </div>
-              <p className="text-sm text-gray-500 font-medium">
-                Security Deposit: <span className="text-gray-900 font-bold">Rs {item.depositAmount}</span>
-              </p>
+<div className="text-sm">
+  <span className="text-gray-500 font-medium">Security Deposit:</span>{" "}
+  {item.depositAmount > 0 ? (
+    <span className="text-gray-900 font-bold">
+      Rs {item.depositAmount}
+    </span>
+  ) : (
+    <span className="text-green-600 font-bold">
+      None required
+    </span>
+  )}
+</div>
             </div>
 
             {/* ✅ NEW: Skill Session Section */}
