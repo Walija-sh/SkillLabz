@@ -7,7 +7,7 @@ import ContractView from "../../components/rentals/ContractView";
 import { useSelector } from "react-redux";
 
 export default function MyRentals() {
-  const userId = useSelector((state) => state.auth.userData?._id);
+  const userId = useSelector((state) => state.auth.userData?.id);
   const [rentals, setRentals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -26,6 +26,7 @@ export default function MyRentals() {
   const [contractModal, setContractModal] = useState({ open: false, rental: null });
   const [contractSubmitting, setContractSubmitting] = useState(false);
   const [contractError, setContractError] = useState("");
+
   
   // Tabs: 'pending', 'active', 'completed'
   // Note: We'll map "approved" to the "active" tab so users know they need to pick it up!
@@ -60,10 +61,13 @@ export default function MyRentals() {
 
   const submitReview = async () => {
     const rental = reviewModal.rental;
+ 
     if (!rental?._id) return;
 
     // For "My Rentals" (renter perspective) you review the owner
-    const reviewedUserId = rental.owner;
+    const reviewedUserId = rental.owner._id;
+    console.log("review user",reviewedUserId);
+    
     if (!reviewedUserId) {
       setReviewMessage({ type: "error", text: "Owner not found for this rental." });
       return;
@@ -176,6 +180,7 @@ export default function MyRentals() {
     setContractSubmitting(false);
     try {
       const response = await rentalService.getRentalById(rentalId);
+   
       setContractModal({ open: true, rental: response.rental });
     } catch (err) {
       setContractError(err?.message || "Failed to load contract.");
@@ -188,6 +193,7 @@ export default function MyRentals() {
     setContractError("");
     try {
       const response = await rentalService.agreeContract(contractModal.rental._id);
+     
       setContractModal({ open: true, rental: response.rental });
       setRentals((prev) => prev.map((r) => (r._id === response.rental._id ? { ...r, contract: response.rental.contract } : r)));
     } catch (err) {
@@ -216,6 +222,16 @@ export default function MyRentals() {
     return date.toISOString().split('T')[0]; // Returns YYYY-MM-DD
   };
 
+  const contractRenterId =
+  typeof contractModal.rental?.renter === "object"
+    ? contractModal.rental?.renter?._id
+    : contractModal.rental?.renter;
+
+const isContractRenter =
+  String(contractRenterId) === String(userId);
+
+  
+
   const getStatusBadge = (status) => {
     switch(status) {
       case 'active':
@@ -235,6 +251,7 @@ export default function MyRentals() {
     }
   };
 
+ 
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-20 flex justify-center">
@@ -367,15 +384,25 @@ export default function MyRentals() {
                 ) : null}
 
                 {/* OTP actions */}
-                {rental.rentalStatus === "approved" && (
-                  <button
-                    onClick={() => openOtpModal("handover", rental)}
-                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-black transition-colors uppercase tracking-widest"
-                  >
-                    Enter Handover OTP
-                  </button>
-                )}
+               {rental.rentalStatus === "approved" && (
+  <>
+    <button
+      onClick={() => openContractModal(rental._id)}
+      className="flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-900 border border-gray-200 px-5 py-2.5 rounded-xl text-sm font-bold transition-colors"
+    >
+      View Contract
+    </button>
 
+    {rental.contract?.agreedAt && (
+      <button
+        onClick={() => openOtpModal("handover", rental)}
+        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-black transition-colors uppercase tracking-widest"
+      >
+        Enter Handover OTP
+      </button>
+    )}
+  </>
+)}
                 {rental.rentalStatus === "active" && (
                   <button
                     onClick={() => openOtpModal("return", rental)}
@@ -412,15 +439,7 @@ export default function MyRentals() {
                   </>
                 )}
                 
-                <button
-                  onClick={() => openContractModal(rental._id)}
-                  className="flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-900 border border-gray-200 px-5 py-2.5 rounded-xl text-sm font-bold transition-colors"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 text-gray-500">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-                  </svg>
-                  View Contract
-                </button>
+               
               </div>
 
             </div>
@@ -652,7 +671,7 @@ export default function MyRentals() {
             </div>
             <ContractView
               rental={contractModal.rental}
-              isRenter={String(contractModal.rental?.renter?._id || contractModal.rental?.renter) === String(userId)}
+              isRenter={isContractRenter}
               onAgree={handleAgreeContract}
               submitting={contractSubmitting}
               agreementError={contractError}
@@ -663,3 +682,4 @@ export default function MyRentals() {
     </div>
   );
 }
+
