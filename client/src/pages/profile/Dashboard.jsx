@@ -212,6 +212,7 @@ export default function Dashboard() {
   const activeAndPastRentals = rentals.filter(r => !isRequestStatus(r.rentalStatus));
 
   const formatDate = (dateString) => new Date(dateString).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
@@ -327,10 +328,205 @@ export default function Dashboard() {
                       <p className="text-xs font-bold text-gray-400 mt-1">{formatDate(req.startDate)} - {formatDate(req.endDate)}</p>
                     </div>
                   </div>
-                  <div className="flex justify-between items-center mb-6 px-4 py-3 bg-gray-50 rounded-xl">
-                    <span className="text-xs font-black text-gray-500 uppercase tracking-widest">Total Payout</span>
-                    <span className="text-lg font-black text-green-600">Rs. {req.totalPrice}</span>
-                  </div>
+                  <div className="
+  space-y-4 mb-6 w-full
+">
+
+  {/* Rental Period */}
+
+  <div className="
+    bg-gray-50 rounded-2xl p-4
+    border border-gray-100
+  ">
+
+    <p className="
+      text-[10px] font-black
+      uppercase tracking-widest
+      text-gray-400 mb-2
+    ">
+      Rental Period
+    </p>
+
+    <div className="
+      flex items-center justify-between
+      text-sm
+    ">
+
+      <span className="text-gray-600">
+        {formatDate(req.startDate)}
+      </span>
+
+      <span className="
+        text-xs font-bold
+        text-gray-400
+      ">
+        →
+      </span>
+
+      <span className="text-gray-600">
+        {formatDate(req.endDate)}
+      </span>
+
+    </div>
+
+    <p className="
+      mt-2 text-xs
+      font-bold text-blue-600
+    ">
+      {req.rentalDays} day
+      {req.rentalDays > 1 ? "s" : ""}
+    </p>
+
+  </div>
+
+  {/* Pricing Breakdown */}
+
+  <div className="
+    bg-gray-50 rounded-2xl p-4
+    border border-gray-100
+    space-y-2
+  ">
+
+    <p className="
+      text-[10px] font-black
+      uppercase tracking-widest
+      text-gray-400
+    ">
+      Payment Breakdown
+    </p>
+
+    <div className="
+      flex justify-between text-sm
+    ">
+      <span className="text-gray-500">
+        Rental Price
+      </span>
+
+      <span className="
+        font-bold text-gray-900
+      ">
+        Rs. {req.pricePerDay}/day
+      </span>
+    </div>
+
+    <div className="
+      flex justify-between text-sm
+    ">
+      <span className="text-gray-500">
+        Deposit
+      </span>
+
+      <span className="
+        font-bold text-gray-900
+      ">
+        Rs. {req.depositAmount}
+      </span>
+    </div>
+
+    {/* Skill Session */}
+
+    {req.includesSkillSession && (
+
+      <div className="
+        flex justify-between text-sm
+      ">
+        <span className="text-gray-500">
+          Skill Session
+        </span>
+
+        <span className="
+          font-bold text-purple-600
+        ">
+          + Rs. {req.skillSessionPrice}
+        </span>
+      </div>
+
+    )}
+
+    <div className="
+      border-t border-gray-200 pt-2
+      flex justify-between
+    ">
+
+      <span className="
+        text-sm font-black
+        uppercase tracking-widest
+        text-gray-500
+      ">
+        Total
+      </span>
+
+      <span className="
+        text-lg font-black
+        text-green-600
+      ">
+        Rs. {req.totalPrice}
+      </span>
+
+    </div>
+
+  </div>
+
+  {/* Skill Session Badge */}
+
+  <div className="flex flex-wrap gap-2">
+
+    {req.includesSkillSession ? (
+
+      <div className="
+        px-3 py-1 rounded-full
+        bg-purple-100 text-purple-700
+        text-[10px] font-black
+        uppercase tracking-widest
+      ">
+        Includes Skill Session
+      </div>
+
+    ) : (
+
+      <div className="
+        px-3 py-1 rounded-full
+        bg-gray-100 text-gray-600
+        text-[10px] font-black
+        uppercase tracking-widest
+      ">
+        Rental Only
+      </div>
+
+    )}
+
+  </div>
+
+  {/* Optional Note */}
+
+  {req.renterNote?.trim() && (
+
+    <div className="
+      bg-yellow-50 border
+      border-yellow-100
+      rounded-2xl p-4
+    ">
+
+      <p className="
+        text-[10px] font-black
+        uppercase tracking-widest
+        text-yellow-700 mb-2
+      ">
+        Renter Note
+      </p>
+
+      <p className="
+        text-sm text-yellow-900
+        whitespace-pre-wrap
+      ">
+        {req.renterNote}
+      </p>
+
+    </div>
+
+  )}
+
+</div>
                   <div className="flex gap-3">
                     <button onClick={() => openApproveModal(req._id)} className="flex-1 py-3 bg-gray-900 text-white rounded-xl font-black uppercase text-xs tracking-widest hover:bg-gray-800 transition-colors">Approve</button>
                     <button onClick={() => handleRentalAction('reject', req._id)} className="flex-1 py-3 bg-red-50 text-red-600 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-red-100 transition-colors">Reject</button>
