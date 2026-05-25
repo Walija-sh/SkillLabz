@@ -148,7 +148,7 @@ paymentMethods: [
         "easypaisa",
         "jazzcash",
         "bank",
-        "cash_on_delivery"
+        "cash"
       ],
       required: true
     },

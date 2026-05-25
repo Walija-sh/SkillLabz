@@ -11,36 +11,40 @@ const toPlain = (doc) => {
 };
 
 const sanitizePublicUser = (userDoc) => {
-  const user = toPlain(userDoc) || {};
+  const user = userDoc.toObject ? userDoc.toObject() : userDoc;
 
-  // Remove obvious sensitive fields. Anything else is returned as-is to avoid hard-coding schema.
-  const sensitiveKeys = [
-    "password",
-    "email",
-    "phone",
-    "emailVerificationToken",
-    "emailVerificationExpire",
-    "passwordResetToken",
-    "passwordResetExpire"
-  ];
+  // -------------------------
+  // REMOVE SENSITIVE FIELDS ONLY
+  // -------------------------
+  delete user.password;
+  delete user.email;
+  delete user.phone;
+  delete user.emailVerificationToken;
+  delete user.emailVerificationExpire;
+  delete user.passwordResetToken;
+  delete user.passwordResetExpire;
 
-  for (const key of sensitiveKeys) {
-    if (key in user) delete user[key];
+  // -------------------------
+  // KEEP SAME STRUCTURE, ONLY SANITIZE paymentMethods
+  // -------------------------
+  if (Array.isArray(user.paymentMethods)) {
+    user.paymentMethods = user.paymentMethods.map((pm) => ({
+      _id: pm._id,
+      title: pm.title,
+      type: pm.type,
+
+      // SAFE PUBLIC FIELDS ONLY
+      bankName: pm.bankName || "",
+      iban: pm.iban ? `****${pm.iban.slice(-4)}` : "",
+      instructions: pm.instructions || "",
+      isActive: pm.isActive
+    }));
   }
 
-  if (user.paymentMethods) {
-  user.acceptedPaymentMethods = user.paymentMethods.map((method) => ({
-    _id: method._id,
-    type: method.type,
-    title: method.title
-  }));
-
-  delete user.paymentMethods;
-}
-
-  // Always expose id in a consistent way
+  // -------------------------
+  // KEEP SAME SHAPE (DO NOT BREAK FRONTEND)
+  // -------------------------
   user.id = user._id;
-  delete user.__v;
 
   return user;
 };
@@ -50,7 +54,7 @@ export const getPublicUserProfile = catchAsync(async (req, res, next) => {
   const { id } = req.params;
   if (!mongoose.Types.ObjectId.isValid(id)) return next(new AppError("Invalid user id", 400));
 
-  const user = await User.findById(id);
+  const user = await User.findById(id).lean();
   if (!user) return next(new AppError("User not found", 404));
 
   const ratingAgg = await Review.aggregate([
@@ -86,6 +90,7 @@ export const getPublicUserProfile = catchAsync(async (req, res, next) => {
 
 // POST /api/users/payment-methods
 export const addPaymentMethod = catchAsync(async (req, res, next) => {
+ 
   const {
     title,
     type,
@@ -179,7 +184,10 @@ export const addPaymentMethod = catchAsync(async (req, res, next) => {
     instructions
   });
 
+  
+  
   await user.save();
+
 
   res.status(200).json({
     status: "success",

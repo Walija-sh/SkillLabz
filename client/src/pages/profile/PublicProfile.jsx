@@ -1,6 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useSelector } from "react-redux";
+import { BsBuildingsFill } from "react-icons/bs";
+import { BsCashCoin } from "react-icons/bs";
+import { MdPhoneAndroid } from "react-icons/md";
+import { MdCreditCard } from "react-icons/md";
 
 import publicUserService from "../../services/publicUser.service";
 import chatService from "../../services/chat.service";
@@ -52,7 +56,7 @@ export default function PublicProfile() {
   const city = user?.location?.city || "";
   const area = user?.location?.addressText || "";
   const displayLocation = city && area ? `${area}, ${city}` : city || area || "Location not set";
-
+const paymentMethods = user?.paymentMethods || [];
   const ratingValue = useMemo(() => {
     const val = Number(rating?.averageRating);
     return Number.isFinite(val) ? val : 0;
@@ -105,6 +109,14 @@ const trustBadge = useMemo(() => {
 
   return { visible: false };
 }, [user]);
+
+const paymentConfig = {
+  bank:             { icon: BsBuildingsFill,  color: "#185FA5", label: "Bank transfer"    },
+  easypaisa:        { icon: MdPhoneAndroid,   color: "#0F6E56", label: "Easypaisa"        },
+  jazzcash:         { icon: MdCreditCard,     color: "#993C1D", label: "JazzCash"         },
+  cash_on_delivery: { icon: BsCashCoin,       color: "#3B6D11", label: "Cash on delivery" },
+};
+
 
   if (loading) {
     return (
@@ -217,6 +229,33 @@ const trustBadge = useMemo(() => {
               </p>
 
             </div>
+    {paymentMethods.length > 0 && (
+  <div className="mt-6">
+    <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">
+      Accepted payment methods
+    </p>
+    <div className="flex flex-wrap gap-2">
+     {paymentMethods.map((pm) => {
+  const config = paymentConfig[pm.type] || {
+    icon: BsCashCoin,
+    color: "#888780",
+    label: pm.type.replaceAll("_", " ")
+  };
+  const Icon = config.icon;
+
+  return (
+    <div
+      key={pm._id || pm.id}
+      className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-800"
+    >
+      <Icon size={15} color={config.color} />
+      {config.label}
+    </div>
+  );
+})}
+    </div>
+  </div>
+)}
             <div className="mt-6 flex justify-center sm:justify-start">
 
   {currentUser?.id !== user.id && (
