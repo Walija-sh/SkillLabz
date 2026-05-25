@@ -198,7 +198,19 @@ const RentalSchema = new mongoose.Schema(
   returnOTPExpiry: {
     type: Date,
     select: false
-  }
+  },
+  // -------------------------
+// PAYMENT status
+// -------------------------
+paymentStatus: {
+  type: String,
+  enum: ["pending", "submitted"],
+  default: "pending"
+},
+
+paymentSubmittedAt: {
+  type: Date
+},
 
 },
 { timestamps: true }

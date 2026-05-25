@@ -17,7 +17,9 @@ import {
   verifyHandoverOtp,
   generateReturnOtp,
   verifyReturnOtp,
-  agreeRentalContract
+  agreeRentalContract,
+  getRentalPaymentInfo,
+  updateRentalPaymentStatus
 } from "../controllers/rental.controller.js";
 
 const RentalRouter = express.Router();
@@ -41,6 +43,16 @@ RentalRouter.post(
 
 RentalRouter.get("/my-rentals", protect, getMyRentals);
 RentalRouter.get("/owner", protect, getOwnerRentals);
+RentalRouter.get(
+  "/:id/payment-info",
+  protect,
+  getRentalPaymentInfo
+);
+RentalRouter.patch(
+  "/:id/payment-status",
+  protect,
+  updateRentalPaymentStatus
+);
 RentalRouter.get("/:id", protect, getRentalById);
 
 

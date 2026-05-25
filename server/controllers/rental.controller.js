@@ -736,3 +736,123 @@ export const verifyReturnOtp = catchAsync(async (req, res, next) => {
     rental
   });
 });
+
+// GET /api/rentals/:id/payment-info
+export const getRentalPaymentInfo = catchAsync(async (req, res, next) => {
+  const rental = await Rental.findById(req.params.id);
+
+  if (!rental) {
+    return next(new AppError("Rental not found", 404));
+  }
+
+  // -------------------------
+  // ONLY RENTER CAN ACCESS
+  // -------------------------
+
+  if (rental.renter.toString() !== req.user._id.toString()) {
+    return next(
+      new AppError("Not authorized to view payment info", 403)
+    );
+  }
+
+  // -------------------------
+  // ONLY AFTER APPROVAL
+  // -------------------------
+
+  const allowedStatuses = [
+    "approved",
+    "active",
+    "completed"
+  ];
+
+  if (!allowedStatuses.includes(rental.rentalStatus)) {
+    return next(
+      new AppError(
+        "Payment info unavailable until rental is approved",
+        400
+      )
+    );
+  }
+
+  // -------------------------
+  // FETCH OWNER
+  // -------------------------
+
+  const owner = await User.findById(rental.owner);
+
+  if (!owner) {
+    return next(new AppError("Owner not found", 404));
+  }
+
+  // -------------------------
+  // ONLY ACTIVE METHODS
+  // -------------------------
+
+  const paymentMethods = owner.paymentMethods.filter(
+    (method) => method.isActive
+  );
+
+  res.status(200).json({
+    status: "success",
+    paymentMethods
+  });
+});
+
+// PATCH /api/rentals/:id/payment-status
+export const updateRentalPaymentStatus = catchAsync(async (req, res, next) => {
+  const { paymentStatus } = req.body;
+
+  if (!["pending", "submitted"].includes(paymentStatus)) {
+    return next(
+      new AppError(
+        "Invalid payment status",
+        400
+      )
+    );
+  }
+
+  const rental = await Rental.findById(req.params.id);
+
+  if (!rental) {
+    return next(new AppError("Rental not found", 404));
+  }
+
+  // -------------------------
+  // ONLY OWNER
+  // -------------------------
+
+  if (rental.owner.toString() !== req.user._id.toString()) {
+    return next(
+      new AppError("Not authorized", 403)
+    );
+  }
+
+  // Optional:
+  // only allow after approval
+
+  if (
+    !["approved", "active"].includes(rental.rentalStatus)
+  ) {
+    return next(
+      new AppError(
+        "Payment status can only be updated for approved rentals",
+        400
+      )
+    );
+  }
+
+  rental.paymentStatus = paymentStatus;
+
+  rental.paymentSubmittedAt =
+    paymentStatus === "submitted"
+      ? new Date()
+      : null;
+
+  await rental.save();
+
+  res.status(200).json({
+    status: "success",
+    message: "Payment status updated successfully",
+    paymentStatus: rental.paymentStatus
+  });
+});

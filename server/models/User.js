@@ -129,7 +129,66 @@ badgeType: {
     type: String,
     enum: ["user", "admin"],
     default: "user"
+  },
+  // -------------------------
+// PAYMENT METHODS
+// -------------------------
+paymentMethods: [
+  {
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 50
+    },
+
+    type: {
+      type: String,
+      enum: [
+        "easypaisa",
+        "jazzcash",
+        "bank",
+        "cash_on_delivery"
+      ],
+      required: true
+    },
+
+    accountTitle: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+
+    accountNumber: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+
+    bankName: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+
+    iban: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+
+    instructions: {
+      type: String,
+      maxlength: 200,
+      default: ""
+    },
+
+    isActive: {
+      type: Boolean,
+      default: true
+    }
   }
+],
 
 },
 { timestamps: true }
