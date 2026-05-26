@@ -1,5 +1,22 @@
 @import "tailwindcss";
 
 @theme{
-  /* colors of app */
+  --color-blue-50: #eef0ff;
+  --color-blue-100: #dfe3ff;
+  --color-blue-200: #bcc4fb;
+  --color-blue-300: #97a2f2;
+  --color-blue-400: #6d79e0;
+  --color-blue-500: #4653c7;
+  --color-blue-600: #191970;
+  --color-blue-700: #141457;
+  --color-blue-800: #101040;
+  --color-blue-900: #0b0b2b;
+  --color-blue-950: #050514;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  background-color: #ECEFF1;
 }
