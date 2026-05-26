@@ -7,7 +7,7 @@ import ContractView from "../../components/rentals/ContractView";
 import { useSelector } from "react-redux";
 
 export default function MyRentals() {
-  const userId = useSelector((state) => state.auth.userData?._id);
+  const userId = useSelector((state) => state.auth.userData?.id);
   const [rentals, setRentals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -26,6 +26,14 @@ export default function MyRentals() {
   const [contractModal, setContractModal] = useState({ open: false, rental: null });
   const [contractSubmitting, setContractSubmitting] = useState(false);
   const [contractError, setContractError] = useState("");
+
+  const [paymentModal, setPaymentModal] = useState({
+  open: false,
+  rental: null,
+  methods: [],
+  loading: false,
+  error: ""
+});
   
   // Tabs: 'pending', 'active', 'completed'
   // Note: We'll map "approved" to the "active" tab so users know they need to pick it up!
@@ -60,10 +68,13 @@ export default function MyRentals() {
 
   const submitReview = async () => {
     const rental = reviewModal.rental;
+ 
     if (!rental?._id) return;
 
     // For "My Rentals" (renter perspective) you review the owner
-    const reviewedUserId = rental.owner;
+    const reviewedUserId = rental.owner._id;
+    console.log("review user",reviewedUserId);
+    
     if (!reviewedUserId) {
       setReviewMessage({ type: "error", text: "Owner not found for this rental." });
       return;
@@ -176,6 +187,7 @@ export default function MyRentals() {
     setContractSubmitting(false);
     try {
       const response = await rentalService.getRentalById(rentalId);
+   
       setContractModal({ open: true, rental: response.rental });
     } catch (err) {
       setContractError(err?.message || "Failed to load contract.");
@@ -188,6 +200,7 @@ export default function MyRentals() {
     setContractError("");
     try {
       const response = await rentalService.agreeContract(contractModal.rental._id);
+     
       setContractModal({ open: true, rental: response.rental });
       setRentals((prev) => prev.map((r) => (r._id === response.rental._id ? { ...r, contract: response.rental.contract } : r)));
     } catch (err) {
@@ -196,7 +209,32 @@ export default function MyRentals() {
       setContractSubmitting(false);
     }
   };
+const openPaymentModal = async (rental) => {
+  setPaymentModal({
+    open: true,
+    rental,
+    methods: [],
+    loading: true,
+    error: ""
+  });
 
+  try {
+    const response =
+      await rentalService.getRentalPaymentInfo(rental._id);
+
+    setPaymentModal((prev) => ({
+      ...prev,
+      methods: response.paymentMethods,
+      loading: false
+    }));
+  } catch (err) {
+    setPaymentModal((prev) => ({
+      ...prev,
+      loading: false,
+      error: err?.message || "Failed to load payment methods."
+    }));
+  }
+};
   // Filter logic based on the selected tab
   const filteredRentals = rentals.filter(rental => {
     if (activeTab === 'pending') return ['pending', 'requested'].includes(rental.rentalStatus);
@@ -215,6 +253,16 @@ export default function MyRentals() {
     const date = new Date(dateString);
     return date.toISOString().split('T')[0]; // Returns YYYY-MM-DD
   };
+
+  const contractRenterId =
+  typeof contractModal.rental?.renter === "object"
+    ? contractModal.rental?.renter?._id
+    : contractModal.rental?.renter;
+
+const isContractRenter =
+  String(contractRenterId) === String(userId);
+
+  
 
   const getStatusBadge = (status) => {
     switch(status) {
@@ -235,6 +283,7 @@ export default function MyRentals() {
     }
   };
 
+ 
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-20 flex justify-center">
@@ -347,6 +396,22 @@ export default function MyRentals() {
                     <p className="text-sm font-bold text-gray-900">Rs. {rental.totalPrice}</p>
                   </div>
 
+                  <div className="mt-4">
+  <p className="text-xs text-gray-400 font-medium mb-1">
+    Payment Status
+  </p>
+
+  {rental.paymentStatus === "paid" ? (
+    <span className="inline-flex bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+      Paid
+    </span>
+  ) : (
+    <span className="inline-flex bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+      Pending
+    </span>
+  )}
+</div>
+
                   {/* OTP verification happens via action buttons below */}
                 </div>
               </div>
@@ -367,15 +432,25 @@ export default function MyRentals() {
                 ) : null}
 
                 {/* OTP actions */}
-                {rental.rentalStatus === "approved" && (
-                  <button
-                    onClick={() => openOtpModal("handover", rental)}
-                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-black transition-colors uppercase tracking-widest"
-                  >
-                    Enter Handover OTP
-                  </button>
-                )}
+               {rental.rentalStatus === "approved" && (
+  <>
+    <button
+      onClick={() => openContractModal(rental._id)}
+      className="flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-900 border border-gray-200 px-5 py-2.5 rounded-xl text-sm font-bold transition-colors"
+    >
+      View Contract
+    </button>
 
+    {rental.contract?.agreedAt && (
+      <button
+        onClick={() => openOtpModal("handover", rental)}
+        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-black transition-colors uppercase tracking-widest"
+      >
+        Enter Handover OTP
+      </button>
+    )}
+  </>
+)}
                 {rental.rentalStatus === "active" && (
                   <button
                     onClick={() => openOtpModal("return", rental)}
@@ -411,16 +486,32 @@ export default function MyRentals() {
                     </button>
                   </>
                 )}
-                
-                <button
-                  onClick={() => openContractModal(rental._id)}
-                  className="flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-900 border border-gray-200 px-5 py-2.5 rounded-xl text-sm font-bold transition-colors"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 text-gray-500">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-                  </svg>
-                  View Contract
-                </button>
+                {/* PAYMENT INFO button */}
+{["approved", "active"].includes(rental.rentalStatus) && (
+  <button
+    onClick={() => openPaymentModal(rental)}
+    className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-xl text-sm font-black transition-colors uppercase tracking-widest"
+  >
+    {/* ICON */}
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+      strokeWidth={2.5}
+      stroke="currentColor"
+      className="w-4 h-4"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M2.25 8.25h19.5m-18 0A1.5 1.5 0 0 0 2.25 9.75v7.5a1.5 1.5 0 0 0 1.5 1.5h16.5a1.5 1.5 0 0 0 1.5-1.5v-7.5a1.5 1.5 0 0 0-1.5-1.5m-18 0V6.75a1.5 1.5 0 0 1 1.5-1.5h16.5a1.5 1.5 0 0 1 1.5 1.5v1.5"
+      />
+    </svg>
+
+    Payment Info
+  </button>
+)}
+               
               </div>
 
             </div>
@@ -652,7 +743,7 @@ export default function MyRentals() {
             </div>
             <ContractView
               rental={contractModal.rental}
-              isRenter={String(contractModal.rental?.renter?._id || contractModal.rental?.renter) === String(userId)}
+              isRenter={isContractRenter}
               onAgree={handleAgreeContract}
               submitting={contractSubmitting}
               agreementError={contractError}
@@ -660,6 +751,69 @@ export default function MyRentals() {
           </div>
         </div>
       )}
+      {paymentModal.open && (
+  <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-md">
+
+    <div className="bg-white rounded-3xl p-8 max-w-lg w-full">
+
+      <div className="flex justify-between items-center mb-6">
+        <h3 className="text-2xl font-black text-gray-900">
+          Payment Information
+        </h3>
+
+        <button
+          onClick={() =>
+            setPaymentModal({
+              open: false,
+              rental: null,
+              methods: [],
+              loading: false,
+              error: ""
+            })
+          }
+          className="text-gray-500"
+        >
+          ✕
+        </button>
+      </div>
+
+      {paymentModal.loading ? (
+        <p>Loading...</p>
+      ) : paymentModal.error ? (
+        <p className="text-red-500">
+          {paymentModal.error}
+        </p>
+      ) : (
+        <div className="space-y-4">
+          {paymentModal.methods.map((method) => (
+            <div
+              key={method._id}
+              className="border border-gray-200 rounded-2xl p-4"
+            >
+              <p className="font-black text-gray-900">
+                {method.type}
+              </p>
+
+              <p className="text-sm text-gray-700 mt-1">
+                {method.accountTitle}
+              </p>
+
+              <p className="text-sm text-gray-700">
+                {method.accountNumber}
+              </p>
+            </div>
+          ))}
+
+          <div className="bg-yellow-50 border border-yellow-100 rounded-2xl p-4 text-sm text-yellow-800 font-medium">
+            Payments are handled directly between renter and owner. 
+            SkillLabz does not process payments.
+          </div>
+        </div>
+      )}
+    </div>
+  </div>
+)}
     </div>
   );
 }
+

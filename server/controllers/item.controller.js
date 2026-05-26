@@ -11,7 +11,7 @@ import { getAvailabilityStatus } from "../utils/rentalAvailability.js";
 // -------------------------
 
 export const createItem = catchAsync(async (req, res, next) => {
-  // ✅ ADDED: skill session fields
+
   const { 
     title, 
     description, 
@@ -66,7 +66,7 @@ export const createItem = catchAsync(async (req, res, next) => {
     category,
     condition,
     pricePerDay,
-    depositAmount,
+    depositAmount: depositAmount ? Number(depositAmount) : 0,
     owner: req.user._id,
     images,
     // ✅ ADDED: Type conversion for incoming form data
@@ -230,7 +230,11 @@ export const updateItem = catchAsync(async (req, res, next) => {
   if (req.body.skillSessionPrice !== undefined) {
     req.body.skillSessionPrice = Number(req.body.skillSessionPrice);
   }
-
+if (req.body.depositAmount !== undefined) {
+  req.body.depositAmount = req.body.depositAmount
+    ? Number(req.body.depositAmount)
+    : 0;
+}
   Object.assign(item, req.body);
 
   await item.save();

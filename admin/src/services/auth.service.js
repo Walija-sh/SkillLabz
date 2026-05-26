@@ -9,8 +9,15 @@ const login = async (email, password) => {
     throw new Error("Access denied. Admin account required.");
   }
 
-  localStorage.setItem('adminToken', user.token);
-  localStorage.setItem('adminUser', JSON.stringify(user));
+  // Separate token from user data
+  const { token, ...userData } = user;
+  
+  if (!token) {
+    throw new Error("No authentication token received from server");
+  }
+
+  localStorage.setItem('adminToken', token);
+  localStorage.setItem('adminUser', JSON.stringify(userData));
 
   return response.data;
 };

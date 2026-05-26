@@ -46,12 +46,13 @@ const ItemSchema = new mongoose.Schema(
     min: 0
   },
 
-  depositAmount: {
-    type: Number,
-    default: 0
-  },
+ depositAmount: {
+  type: Number,
+  default: 0,
+  min: [0, "Deposit cannot be negative"]
+},
 
-  // ✅ Added skill session support
+  // Added skill session support
   offerSkillSession: {
     type: Boolean,
     default: false

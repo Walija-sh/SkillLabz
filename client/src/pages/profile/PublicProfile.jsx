@@ -1,16 +1,28 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { useSelector } from "react-redux";
+import { BsBuildingsFill } from "react-icons/bs";
+import { BsCashCoin } from "react-icons/bs";
+import { MdPhoneAndroid } from "react-icons/md";
+import { MdCreditCard } from "react-icons/md";
+
 import publicUserService from "../../services/publicUser.service";
+import chatService from "../../services/chat.service";
+
 import Stars from "../../components/reviews/Stars";
 import ReviewsSection from "../../components/reviews/ReviewsSection";
 
 export default function PublicProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const currentUser = useSelector(
+  (state) => state.auth.userData
+);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [profile, setProfile] = useState(null);
+ 
 
   useEffect(() => {
     const load = async () => {
@@ -18,6 +30,8 @@ export default function PublicProfile() {
       setError("");
       try {
         const data = await publicUserService.getPublicProfile(id);
+     
+        
         setProfile(data);
       } catch (e) {
         const msg =
@@ -42,11 +56,67 @@ export default function PublicProfile() {
   const city = user?.location?.city || "";
   const area = user?.location?.addressText || "";
   const displayLocation = city && area ? `${area}, ${city}` : city || area || "Location not set";
-
+const paymentMethods = user?.paymentMethods || [];
   const ratingValue = useMemo(() => {
     const val = Number(rating?.averageRating);
     return Number.isFinite(val) ? val : 0;
   }, [rating]);
+  const handleMessageUser = async () => {
+
+  // User not logged in
+  if (!currentUser) {
+    navigate("/login");
+    return;
+  }
+
+  // Prevent self-chat
+  if (currentUser.id === user.id) {
+    return;
+  }
+
+  try {
+
+    const chatId =
+      await chatService.createOrGetChat(
+        currentUser.id,
+        user.id
+      );
+
+    navigate(`/messages?chat=${chatId}`);
+
+  } catch (error) {
+
+    console.error("Failed to create chat:", error);
+  }
+};
+
+const trustBadge = useMemo(() => {
+  if (user?.identityVerificationStatus === "approved") {
+    return {
+      text: "Verified User",
+      type: "verified",
+      visible: true
+    };
+  }
+
+  if (user?.isEmailVerified) {
+    return {
+      text: "Email Verified",
+      type: "email",
+      visible: true
+    };
+  }
+
+  return { visible: false };
+}, [user]);
+
+const paymentConfig = {
+  bank:             { icon: BsBuildingsFill,  color: "#185FA5", label: "Bank transfer"    },
+  easypaisa:        { icon: MdPhoneAndroid,   color: "#0F6E56", label: "Easypaisa"        },
+  jazzcash:         { icon: MdCreditCard,     color: "#993C1D", label: "JazzCash"         },
+  cash_on_delivery: { icon: BsCashCoin,       color: "#3B6D11", label: "Cash on delivery" },
+};
+
 
   if (loading) {
     return (
@@ -92,17 +162,50 @@ export default function PublicProfile() {
 
         {/* Header card */}
         <div className="bg-white rounded-3xl p-8 sm:p-10 shadow-sm border border-gray-100 flex flex-col sm:flex-row items-center sm:items-start gap-8">
-          <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-gray-50 bg-gray-100 flex items-center justify-center shadow-sm">
+          <div className={`w-32 h-32 rounded-full overflow-hidden flex items-center justify-center shadow-sm relative `}>
             {avatarUrl ? (
-              <img src={avatarUrl} alt={displayName} className="w-full h-full object-cover" />
+              <img src={avatarUrl} alt={displayName} className="w-full h-full object-cover object-top" />
             ) : (
               <span className="text-4xl font-black text-gray-400 uppercase">{displayName.charAt(0) || "?"}</span>
             )}
+            
+
           </div>
+
 
           <div className="flex-1 text-center sm:text-left">
             <h1 className="text-3xl font-black text-gray-900 capitalize">{displayName}</h1>
-
+{trustBadge.visible && (
+  <div
+    className="inline-flex items-center gap-1.5 px-3 py-1 mt-2 text-xs font-black uppercase tracking-wider rounded-full"
+    style={
+      trustBadge.type === "verified"
+        ? {
+            background: "linear-gradient(135deg, #f5d97a 0%, #e8b84b 40%, #f7e199 70%, #c9920a 100%)",
+            color: "#7a4f00",
+            border: "1px solid #d4a017",
+            boxShadow: "0 1px 4px rgba(197,145,10,0.25), inset 0 1px 0 rgba(255,255,240,0.5)",
+          }
+        : {
+            background: "#f0fdf4",
+            color: "#166534",
+            border: "1px solid #bbf7d0",
+          }
+    }
+  >
+    {trustBadge.type === "verified" ? (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5" style={{ filter: "drop-shadow(0 1px 1px rgba(120,70,0,0.2))" }}>
+        <path fillRule="evenodd" d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
+      </svg>
+    ) : (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+        <path d="M3 4a2 2 0 00-2 2v1.161l8.441 4.221a1.25 1.25 0 001.118 0L19 7.162V6a2 2 0 00-2-2H3z" />
+        <path d="M19 8.839l-7.77 3.885a2.75 2.75 0 01-2.46 0L1 8.839V14a2 2 0 002 2h14a2 2 0 002-2V8.839z" />
+      </svg>
+    )}
+    {trustBadge.text}
+  </div>
+)}
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-3 justify-center sm:justify-start">
               <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-50 text-gray-700 text-xs font-black uppercase tracking-wider rounded-lg border border-gray-100">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-gray-400">
@@ -124,7 +227,56 @@ export default function PublicProfile() {
               <p className="text-gray-800 font-medium leading-relaxed">
                 {user?.bio || "No bio added yet."}
               </p>
+
             </div>
+    {paymentMethods.length > 0 && (
+  <div className="mt-6">
+    <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">
+      Accepted payment methods
+    </p>
+    <div className="flex flex-wrap gap-2">
+     {paymentMethods.map((pm) => {
+  const config = paymentConfig[pm.type] || {
+    icon: BsCashCoin,
+    color: "#888780",
+    label: pm.type.replaceAll("_", " ")
+  };
+  const Icon = config.icon;
+
+  return (
+    <div
+      key={pm._id || pm.id}
+      className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-800"
+    >
+      <Icon size={15} color={config.color} />
+      {config.label}
+    </div>
+  );
+})}
+    </div>
+  </div>
+)}
+            <div className="mt-6 flex justify-center sm:justify-start">
+
+  {currentUser?.id !== user.id && (
+
+    <button
+      onClick={handleMessageUser}
+      className="
+        px-6 py-3
+        bg-blue-600 text-white
+        rounded-2xl
+        font-black uppercase tracking-wider
+        hover:bg-blue-700
+        transition-colors
+      "
+    >
+      Message
+    </button>
+
+  )}
+
+</div>
           </div>
         </div>
 

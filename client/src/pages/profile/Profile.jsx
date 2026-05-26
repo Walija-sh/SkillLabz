@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useNavigate, Navigate } from 'react-router-dom'; 
 import Button from '../../components/common/Button';
-import userService from '../../services/user.service'; // Brought in the service!
+import userService from '../../services/user.service'; 
+import Input from '../../components/common/Input'
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -13,6 +14,84 @@ export default function Profile() {
   // Verification UI State
   const [isSending, setIsSending] = useState(false);
   const [verifyMessage, setVerifyMessage] = useState({ type: '', text: '' });
+
+  const [paymentMethods, setPaymentMethods] = useState([]);
+const [loadingPayments, setLoadingPayments] = useState(true);
+const [editingMethodId, setEditingMethodId] = useState(null);
+
+const [paymentForm, setPaymentForm] = useState({
+  title: '',
+  type: 'easypaisa',
+  accountTitle: '',
+  accountNumber: '',
+  bankName: '',
+  iban: '',
+  instructions: ''
+});
+
+const [isAddingPayment, setIsAddingPayment] = useState(false);
+
+
+
+const fetchPaymentMethods = async () => {
+  try {
+    setLoadingPayments(true);
+
+    const res = await userService.getMyPaymentMethods();
+
+    setPaymentMethods(res.paymentMethods || []);
+    
+    
+  } catch (err) {
+    console.error(err);
+  } finally {
+    setLoadingPayments(false);
+  }
+};
+useEffect(() => {
+  fetchPaymentMethods();
+}, []);
+const handleSavePaymentMethod = async () => {
+  try {
+    setIsAddingPayment(true);
+
+    let res;
+
+    if (editingMethodId) {
+      res = await userService.updatePaymentMethod(
+        editingMethodId,
+        paymentForm
+      );
+    } else {
+      res = await userService.addPaymentMethod(paymentForm);
+   
+      
+    }
+
+    setPaymentMethods(res.paymentMethods || []);
+
+    resetPaymentForm();
+
+  } catch (err) {
+    console.error(err);
+  } finally {
+    setIsAddingPayment(false);
+  }
+};
+
+const resetPaymentForm = () => {
+  setPaymentForm({
+    title: '',
+    type: 'easypaisa',
+    accountTitle: '',
+    accountNumber: '',
+    bankName: '',
+    iban: '',
+    instructions: ''
+  });
+
+  setEditingMethodId(null);
+};
 
   // 1. Wait for user data to load
   if (!user) {
@@ -222,7 +301,253 @@ export default function Profile() {
             )}
           </div>
         </div>
+{/* PAYMENT METHODS */}
+<div className="bg-white rounded-3xl p-8 sm:p-10 shadow-sm border border-gray-100">
+  <div className="flex items-center justify-between mb-6">
+    <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">
+      Payment Methods
+    </h2>
+  </div>
 
+  {/* Existing Methods */}
+  <div className="space-y-4 mb-8">
+    {paymentMethods.length === 0 ? (
+      <div className="text-sm text-gray-500">
+        No payment methods added yet.
+      </div>
+    ) : (
+      paymentMethods.map((method) => (
+        <div
+          key={method._id}
+          className="border border-gray-200 rounded-2xl p-5"
+        >
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h3 className="font-bold text-gray-900">
+                {method.title}
+              </h3>
+
+              <p className="text-sm text-gray-500 mt-1 uppercase">
+                {method.type}
+              </p>
+
+              {method.accountTitle && (
+                <p className="text-sm text-gray-700 mt-3">
+                  Account Title: {method.accountTitle}
+                </p>
+              )}
+
+              {method.accountNumber && (
+                <p className="text-sm text-gray-700">
+                  Account Number: {method.accountNumber}
+                </p>
+              )}
+
+              {method.bankName && (
+                <p className="text-sm text-gray-700">
+                  Bank: {method.bankName}
+                </p>
+              )}
+
+              {method.iban && (
+                <p className="text-sm text-gray-700">
+                  IBAN: {method.iban}
+                </p>
+              )}
+
+              {method.instructions && (
+                <p className="text-sm text-gray-500 mt-2">
+                  {method.instructions}
+                </p>
+              )}
+            </div>
+
+         <div className="flex flex-col gap-2">
+  <button
+    onClick={() => {
+      setEditingMethodId(method._id);
+
+      setPaymentForm({
+        title: method.title || '',
+        type: method.type || 'easypaisa',
+        accountTitle: method.accountTitle || '',
+        accountNumber: method.accountNumber || '',
+        bankName: method.bankName || '',
+        iban: method.iban || '',
+        instructions: method.instructions || ''
+      });
+    }}
+    className="text-blue-600 text-sm font-bold"
+  >
+    Edit
+  </button>
+
+  <button
+    onClick={async () => {
+      try {
+        const res =
+          await userService.deletePaymentMethod(method._id);
+
+        setPaymentMethods(res.paymentMethods || []);
+
+        if (editingMethodId === method._id) {
+          resetPaymentForm();
+        }
+
+      } catch (err) {
+        console.error(err);
+      }
+    }}
+    className="text-red-600 text-sm font-bold"
+  >
+    Delete
+  </button>
+</div>
+           
+          </div>
+        </div>
+      ))
+    )}
+  </div>
+
+ <div className="border-t border-gray-100 pt-6 space-y-5">
+  <h3 className="font-bold text-gray-900">
+    {editingMethodId ? "Update Payment Method" : "Add New Method"}
+  </h3>
+
+  <Input
+    label="Display Title"
+    placeholder="e.g. My Easypaisa"
+    value={paymentForm.title}
+    onChange={(e) =>
+      setPaymentForm((prev) => ({
+        ...prev,
+        title: e.target.value
+      }))
+    }
+  />
+
+  <div>
+    <label className="block text-sm font-bold text-gray-900 mb-2">
+      Payment Type
+    </label>
+
+    <select
+      value={paymentForm.type}
+      onChange={(e) =>
+        setPaymentForm((prev) => ({
+          ...prev,
+          type: e.target.value
+        }))
+      }
+      className="w-full rounded-2xl border border-gray-200 px-4 py-3 bg-gray-50"
+    >
+      <option value="easypaisa">Easypaisa</option>
+      <option value="jazzcash">JazzCash</option>
+      <option value="bank">Bank Transfer</option>
+      <option value="cash">Cash</option>
+    </select>
+  </div>
+
+  {paymentForm.type !== "cash" && (
+    <>
+      <Input
+        label="Account Title"
+        placeholder="Account holder name"
+        value={paymentForm.accountTitle}
+        onChange={(e) =>
+          setPaymentForm((prev) => ({
+            ...prev,
+            accountTitle: e.target.value
+          }))
+        }
+      />
+
+      {(paymentForm.type === "easypaisa" ||
+        paymentForm.type === "jazzcash") && (
+        <Input
+          label="Mobile Number"
+          placeholder="03XXXXXXXXX"
+          value={paymentForm.accountNumber}
+          onChange={(e) =>
+            setPaymentForm((prev) => ({
+              ...prev,
+              accountNumber: e.target.value
+            }))
+          }
+        />
+      )}
+
+      {paymentForm.type === "bank" && (
+        <>
+          <Input
+            label="Bank Name"
+            placeholder="e.g. HBL"
+            value={paymentForm.bankName}
+            onChange={(e) =>
+              setPaymentForm((prev) => ({
+                ...prev,
+                bankName: e.target.value
+              }))
+            }
+          />
+
+          <Input
+            label="IBAN"
+            placeholder="PK00HABB0000000000000000"
+            value={paymentForm.iban}
+            onChange={(e) =>
+              setPaymentForm((prev) => ({
+                ...prev,
+                iban: e.target.value
+              }))
+            }
+          />
+        </>
+      )}
+    </>
+  )}
+
+  <div>
+    <label className="block text-sm font-bold text-gray-900 mb-2">
+      Instructions
+    </label>
+
+    <textarea
+      rows={3}
+      value={paymentForm.instructions}
+      onChange={(e) =>
+        setPaymentForm((prev) => ({
+          ...prev,
+          instructions: e.target.value
+        }))
+      }
+      className="w-full rounded-2xl border border-gray-200 px-4 py-3 bg-gray-50"
+      placeholder="Optional instructions..."
+    />
+  </div>
+
+  <div className="flex gap-3">
+    {editingMethodId && (
+      <Button
+        type="button"
+        onClick={resetPaymentForm}
+        className="bg-gray-200 text-gray-800"
+      >
+        Cancel
+      </Button>
+    )}
+
+    <Button
+      onClick={handleSavePaymentMethod}
+      isLoading={isAddingPayment}
+      className="bg-blue-600 text-white"
+    >
+      {editingMethodId ? "Update Method" : "Add Payment Method"}
+    </Button>
+  </div>
+</div>
+</div>
       </div>
     </div>
   );

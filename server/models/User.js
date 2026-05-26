@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import validator from "validator";
 import bcrypt from "bcryptjs";
+import Item from "./Item.js";
 
 const UserSchema = new mongoose.Schema(
 {
@@ -129,7 +130,66 @@ badgeType: {
     type: String,
     enum: ["user", "admin"],
     default: "user"
+  },
+  // -------------------------
+// PAYMENT METHODS
+// -------------------------
+paymentMethods: [
+  {
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 50
+    },
+
+    type: {
+      type: String,
+      enum: [
+        "easypaisa",
+        "jazzcash",
+        "bank",
+        "cash"
+      ],
+      required: true
+    },
+
+    accountTitle: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+
+    accountNumber: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+
+    bankName: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+
+    iban: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+
+    instructions: {
+      type: String,
+      maxlength: 200,
+      default: ""
+    },
+
+    isActive: {
+      type: Boolean,
+      default: true
+    }
   }
+],
 
 },
 { timestamps: true }
@@ -149,7 +209,48 @@ UserSchema.pre("save", async function () {
   this.password = await bcrypt.hash(this.password, salt);
 });
 
+UserSchema.pre("save", function () {
 
+  this._locationModified = this.isModified("location");
+
+});
+
+UserSchema.post("save", async function (doc) {
+
+  // Only sync when location changed
+  if (!this._locationModified) return;
+
+  if (
+    !doc.location ||
+    !doc.location.coordinates ||
+    doc.location.coordinates.length !== 2
+  ) {
+    return;
+  }
+
+  try {
+
+    await Item.updateMany(
+      { owner: doc._id },
+      {
+        $set: {
+          location: {
+            type: "Point",
+            coordinates: doc.location.coordinates,
+            city: doc.location.city || "",
+            addressText: doc.location.addressText || ""
+          }
+        }
+      }
+    );
+
+    console.log(`Synced item locations for user ${doc._id}`);
+
+  } catch (err) {
+    console.error("Failed syncing item locations:", err);
+  }
+
+});
 // -------------------------
 // INSTANCE METHOD
 // -------------------------

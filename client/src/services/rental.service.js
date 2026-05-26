@@ -146,7 +146,37 @@ const rentalService = {
     } catch (error) {
       throw error.response?.data || { message: "Failed to agree to contract." };
     }
+  },
+
+  // -------------------------
+// PAYMENT
+// -------------------------
+
+getRentalPaymentInfo: async (id) => {
+  try {
+    const response = await apiClient.get(`/rentals/${id}/payment-info`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || {
+      message: "Failed to fetch payment info."
+    };
   }
+},
+
+updateRentalPaymentStatus: async (id, paymentStatus) => {
+  try {
+    const response = await apiClient.patch(
+      `/rentals/${id}/payment-status`,
+      { paymentStatus }
+    );
+
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || {
+      message: "Failed to update payment status."
+    };
+  }
+},
 };
 
 export default rentalService;

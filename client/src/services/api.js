@@ -1,27 +1,22 @@
 import axios from 'axios';
 
 const normalizeApiBaseUrl = (rawBaseUrl) => {
-  if (!rawBaseUrl) return null;
-  const trimmed = String(rawBaseUrl).trim().replace(/\/+$/, "");
-  return trimmed.endsWith("/api") ? trimmed : `${trimmed}/api`;
-};
-
-const resolvedBaseURL = (() => {
-  const rawBaseUrl = import.meta.env.DEV
-    ? import.meta.env.VITE_API_URL_DEV
-    : import.meta.env.VITE_API_URL_PROD;
-
-  const normalized = normalizeApiBaseUrl(rawBaseUrl);
-
-  if (!normalized) {
-    throw new Error("API base URL is not defined. Check your environment variables.");
+  if (!rawBaseUrl) {
+    throw new Error("VITE_API_URL is missing");
   }
 
-  return normalized;
-})();
+  const trimmed = String(rawBaseUrl).trim().replace(/\/+$/, "");
+
+  return trimmed.endsWith("/api")
+    ? trimmed
+    : `${trimmed}/api`;
+};
+
+const resolvedBaseURL = normalizeApiBaseUrl(
+  import.meta.env.VITE_API_URL
+);
 
 const apiClient = axios.create({
-  // Uses your local .env file during development, and falls back to Vercel for production
   baseURL: resolvedBaseURL,
   headers: {
     'Content-Type': 'application/json',

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import toolService from '../../services/tool.service';
-import Button from '../../components/common/Button'; // ✅ Imported your reusable Button
+import Button from '../../components/common/Button'; 
 
 export default function EditTool() {
   const { id } = useParams();
@@ -11,6 +11,7 @@ export default function EditTool() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [useDeposit, setUseDeposit] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -32,32 +33,32 @@ export default function EditTool() {
   const MAX_IMAGES = 5; 
   const totalCurrentImages = existingImages.length + newImageFiles.length;
 
+  const fetchTool = async () => {
+    try {
+      const response = await toolService.getToolById(id);
+      const item = response.item;
+      
+      // Pre-fill the form with existing data
+      setFormData({
+        title: item.title || '',
+        category: item.category || '',
+        condition: item.condition || '',
+        description: item.description || '',
+        pricePerDay: item.pricePerDay || '',
+       depositAmount: item.depositAmount ?? 0,
+        city: item.location?.city || ''
+      });
+      setUseDeposit((item.depositAmount ?? 0) > 0);
+      setExistingImages(item.images || []);
+    } catch (err) {
+      setError(err.message || "Failed to load tool details.");
+    } finally {
+      setLoading(false);
+    }
+  };
   // Fetch the tool data when the page loads
   useEffect(() => {
-    const fetchTool = async () => {
-      try {
-        const response = await toolService.getToolById(id);
-        const item = response.item;
-        
-        // Pre-fill the form with existing data
-        setFormData({
-          title: item.title || '',
-          category: item.category || '',
-          condition: item.condition || '',
-          description: item.description || '',
-          pricePerDay: item.pricePerDay || '',
-          depositAmount: item.depositAmount || '',
-          city: item.location?.city || ''
-        });
-        
-        setExistingImages(item.images || []);
-      } catch (err) {
-        setError(err.message || "Failed to load tool details.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
+ setLoading(true);
     fetchTool();
   }, [id]);
 
@@ -73,7 +74,7 @@ export default function EditTool() {
     setError(null);
 
     // Validate max images
-    if (totalCurrentImages + files.length > MAX_IMAGES) {
+  if ((existingImages.length + newImageFiles.length + files.length) > MAX_IMAGES){
       setError(`You can only have a maximum of ${MAX_IMAGES} images. Space left: ${MAX_IMAGES - totalCurrentImages}.`);
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
@@ -113,7 +114,11 @@ export default function EditTool() {
       setError("Please include at least one product image.");
       return;
     }
-
+      if (existingImages.length === 0 && newImageFiles.length === 0) {
+  setError("At least one image is required");
+  setSaving(false);
+  return;
+}
     setSaving(true);
 
     try {
@@ -123,8 +128,11 @@ export default function EditTool() {
       updateData.append('category', formData.category);
       updateData.append('condition', formData.condition);
       updateData.append('description', formData.description);
-      updateData.append('pricePerDay', formData.pricePerDay);
-      updateData.append('depositAmount', formData.depositAmount);
+      updateData.append('pricePerDay', Number(formData.pricePerDay || 0));
+updateData.append(
+  'depositAmount',
+  useDeposit ? Number(formData.depositAmount || 0) : 0
+);
 
       const keptImageIds = existingImages.map(img => img.public_id);
       updateData.append('keptImages', JSON.stringify(keptImageIds));
@@ -135,6 +143,7 @@ export default function EditTool() {
         });
       }
 
+
       await toolService.updateTool(id, updateData);
       navigate('/dashboard');
     } catch (err) {
@@ -142,6 +151,7 @@ export default function EditTool() {
       setSaving(false);
     }
   };
+
 
   if (loading) {
     return (
@@ -187,7 +197,7 @@ export default function EditTool() {
           <input type="text" name="title" value={formData.title} onChange={handleChange} required className="w-full rounded-xl border border-gray-200 p-3 outline-none focus:ring-2 focus:ring-blue-600 bg-gray-50 transition-all" />
         </div>
 
-        {/* ✅ SYNced Category & Condition Dropdowns */}
+        {/*  SYNced Category & Condition Dropdowns */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2">Category</label>
@@ -220,8 +230,29 @@ export default function EditTool() {
             <input type="number" name="pricePerDay" value={formData.pricePerDay} onChange={handleChange} required min="0" className="w-full rounded-xl border border-gray-200 p-3 outline-none focus:ring-2 focus:ring-blue-600 bg-gray-50 transition-all" />
           </div>
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2">Security Deposit (Rs)</label>
-            <input type="number" name="depositAmount" value={formData.depositAmount} onChange={handleChange} required min="0" className="w-full rounded-xl border border-gray-200 p-3 outline-none focus:ring-2 focus:ring-blue-600 bg-gray-50 transition-all" />
+            <div className="flex items-center gap-3 mb-2">
+  <input
+    type="checkbox"
+    checked={useDeposit}
+    onChange={(e) => setUseDeposit(e.target.checked)}
+  />
+  <span>Enable refundable security deposit</span>
+</div>
+            {useDeposit && (
+  <input
+    type="number"
+    name="depositAmount"
+    value={formData.depositAmount}
+   onChange={(e) =>
+  setFormData(prev => ({
+    ...prev,
+    depositAmount: e.target.value
+  }))
+}
+    min="0"
+    className="w-full rounded-xl border border-gray-200 p-3"
+  />
+)}
           </div>
         </div>
 
