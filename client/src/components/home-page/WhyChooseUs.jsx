@@ -16,7 +16,7 @@ const anchorHover = { x: 26, y: 26, transition: { type: 'spring', stiffness: 260
 
 export default function WhyChooseUs() {
   return (
-    <section id="features" className="pt-8 md:pt-12 pb-8 md:pb-12 bg-[#ECEFF1] px-4">
+    <section id="features" className="pt-8 md:pt-12 pb-8 md:pb-12 bg-[#ECEFF1] px-4 overflow-x-clip">
       <div className="max-w-7xl mx-auto">
         {/* Heading */}
         <div className="flex flex-col items-center mb-16">
