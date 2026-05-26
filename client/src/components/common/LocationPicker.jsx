@@ -5,28 +5,80 @@ export default function LocationPicker({ onLocationSelect, currentCoordinates = 
   const [isLocating, setIsLocating] = useState(false);
   const [error, setError] = useState(null);
 
-  const handleGetLocation = () => {
-    if (!navigator.geolocation) {
-      setError("Geolocation not supported.");
-      return;
-    }
-    setIsLocating(true);
-    setError(null);
+const handleGetLocation = () => {
+  if (!navigator.geolocation) {
+    setError("Geolocation not supported.");
+    return;
+  }
 
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        // [longitude, latitude] for GeoJSON
-        onLocationSelect([pos.coords.longitude, pos.coords.latitude]);
-        setIsLocating(false);
-      },
-      () => {
-        setIsLocating(false);
-        setError("Location access denied.");
-      },
-      { enableHighAccuracy: true }
-    );
-  };
+  setIsLocating(true);
+  setError(null);
 
+  navigator.geolocation.getCurrentPosition(
+    async (pos) => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+
+      try {
+        // Reverse Geocoding using OpenStreetMap Nominatim
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`
+        );
+
+        const data = await response.json();
+        
+        
+
+        const address = data.address || {};
+
+        // City extraction
+        const city =
+          address.city ||
+          address.town ||
+          address.village ||
+          address.county ||
+          "";
+
+        // Area / Markaz extraction
+       let area =
+  address.suburb ||
+  address.neighbourhood ||
+  address.quarter ||
+  address.hamlet ||
+  address.village ||
+  address.town ||
+  address.municipality ||
+  "";
+
+        // Send full structured data
+        onLocationSelect({
+          coordinates: [lng, lat],
+          city,
+          area,
+        });
+
+      } catch (err) {
+        console.error(err);
+
+        // fallback if API fails
+        onLocationSelect({
+          coordinates: [lng, lat],
+          city: "",
+          area: "",
+        });
+
+        setError("Failed to fetch address details.");
+      }
+
+      setIsLocating(false);
+    },
+    () => {
+      setIsLocating(false);
+      setError("Location access denied.");
+    },
+    { enableHighAccuracy: true }
+  );
+};
   const hasCoords = currentCoordinates[0] !== 0 || currentCoordinates[1] !== 0;
 
   return (

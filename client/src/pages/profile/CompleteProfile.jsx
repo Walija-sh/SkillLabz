@@ -54,9 +54,14 @@ export default function CompleteProfile() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleLocationUpdate = (coords) => {
-    setFormData((prev) => ({ ...prev, coordinates: coords }));
-  };
+const handleLocationUpdate = (locationData) => {
+  setFormData((prev) => ({
+    ...prev,
+    coordinates: locationData.coordinates,
+    city: locationData.city || "",
+    addressText: locationData.area || "",
+  }));
+};
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
