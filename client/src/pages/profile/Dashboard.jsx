@@ -212,7 +212,31 @@ export default function Dashboard() {
   const activeAndPastRentals = rentals.filter(r => !isRequestStatus(r.rentalStatus));
 
   const formatDate = (dateString) => new Date(dateString).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-  
+  const handlePaymentStatusUpdate = async (rentalId) => {
+  try {
+    const response =
+      await rentalService.updateRentalPaymentStatus(
+        rentalId,
+        "paid"
+      );
+
+    setRentals((prev) =>
+      prev.map((r) =>
+        r._id === rentalId
+          ? {
+              ...r,
+              paymentStatus: response.paymentStatus
+            }
+          : r
+      )
+    );
+  } catch (err) {
+    alert(
+      err?.message ||
+      "Failed to update payment status."
+    );
+  }
+};
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
@@ -569,6 +593,16 @@ export default function Dashboard() {
                     }`}>
                       {rental.rentalStatus}
                     </span>
+                    {/* PAYMENT STATUS */}
+<div
+  className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
+    rental.paymentStatus === "paid"
+      ? "bg-green-100 text-green-700"
+      : "bg-yellow-100 text-yellow-700"
+  }`}
+>
+  Payment: {rental.paymentStatus || "pending"}
+</div>
 
                     {/* Action Buttons for Lifecycle */}
                     {rental.rentalStatus === 'approved' && (
@@ -613,6 +647,18 @@ export default function Dashboard() {
                         Cancel Rental
                       </button>
                     )}
+                    {/* MARK PAYMENT AS PAID */}
+{["approved", "active"].includes(rental.rentalStatus) &&
+ rental.paymentStatus !== "paid" && (
+  <button
+    onClick={() =>
+      handlePaymentStatusUpdate(rental._id)
+    }
+    className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-green-700"
+  >
+    Mark As Paid
+  </button>
+)}
                     <Link to={`/rentals/${rental._id}`} className="w-full sm:w-auto px-4 py-2 bg-white text-gray-700 border border-gray-200 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-gray-50">
                       View Details
                     </Link>

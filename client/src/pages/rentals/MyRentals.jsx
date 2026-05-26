@@ -27,6 +27,13 @@ export default function MyRentals() {
   const [contractSubmitting, setContractSubmitting] = useState(false);
   const [contractError, setContractError] = useState("");
 
+  const [paymentModal, setPaymentModal] = useState({
+  open: false,
+  rental: null,
+  methods: [],
+  loading: false,
+  error: ""
+});
   
   // Tabs: 'pending', 'active', 'completed'
   // Note: We'll map "approved" to the "active" tab so users know they need to pick it up!
@@ -202,7 +209,32 @@ export default function MyRentals() {
       setContractSubmitting(false);
     }
   };
+const openPaymentModal = async (rental) => {
+  setPaymentModal({
+    open: true,
+    rental,
+    methods: [],
+    loading: true,
+    error: ""
+  });
 
+  try {
+    const response =
+      await rentalService.getRentalPaymentInfo(rental._id);
+
+    setPaymentModal((prev) => ({
+      ...prev,
+      methods: response.paymentMethods,
+      loading: false
+    }));
+  } catch (err) {
+    setPaymentModal((prev) => ({
+      ...prev,
+      loading: false,
+      error: err?.message || "Failed to load payment methods."
+    }));
+  }
+};
   // Filter logic based on the selected tab
   const filteredRentals = rentals.filter(rental => {
     if (activeTab === 'pending') return ['pending', 'requested'].includes(rental.rentalStatus);
@@ -364,6 +396,22 @@ const isContractRenter =
                     <p className="text-sm font-bold text-gray-900">Rs. {rental.totalPrice}</p>
                   </div>
 
+                  <div className="mt-4">
+  <p className="text-xs text-gray-400 font-medium mb-1">
+    Payment Status
+  </p>
+
+  {rental.paymentStatus === "paid" ? (
+    <span className="inline-flex bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+      Paid
+    </span>
+  ) : (
+    <span className="inline-flex bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+      Pending
+    </span>
+  )}
+</div>
+
                   {/* OTP verification happens via action buttons below */}
                 </div>
               </div>
@@ -438,7 +486,31 @@ const isContractRenter =
                     </button>
                   </>
                 )}
-                
+                {/* PAYMENT INFO button */}
+{["approved", "active"].includes(rental.rentalStatus) && (
+  <button
+    onClick={() => openPaymentModal(rental)}
+    className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-xl text-sm font-black transition-colors uppercase tracking-widest"
+  >
+    {/* ICON */}
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+      strokeWidth={2.5}
+      stroke="currentColor"
+      className="w-4 h-4"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M2.25 8.25h19.5m-18 0A1.5 1.5 0 0 0 2.25 9.75v7.5a1.5 1.5 0 0 0 1.5 1.5h16.5a1.5 1.5 0 0 0 1.5-1.5v-7.5a1.5 1.5 0 0 0-1.5-1.5m-18 0V6.75a1.5 1.5 0 0 1 1.5-1.5h16.5a1.5 1.5 0 0 1 1.5 1.5v1.5"
+      />
+    </svg>
+
+    Payment Info
+  </button>
+)}
                
               </div>
 
@@ -679,6 +751,68 @@ const isContractRenter =
           </div>
         </div>
       )}
+      {paymentModal.open && (
+  <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-md">
+
+    <div className="bg-white rounded-3xl p-8 max-w-lg w-full">
+
+      <div className="flex justify-between items-center mb-6">
+        <h3 className="text-2xl font-black text-gray-900">
+          Payment Information
+        </h3>
+
+        <button
+          onClick={() =>
+            setPaymentModal({
+              open: false,
+              rental: null,
+              methods: [],
+              loading: false,
+              error: ""
+            })
+          }
+          className="text-gray-500"
+        >
+          ✕
+        </button>
+      </div>
+
+      {paymentModal.loading ? (
+        <p>Loading...</p>
+      ) : paymentModal.error ? (
+        <p className="text-red-500">
+          {paymentModal.error}
+        </p>
+      ) : (
+        <div className="space-y-4">
+          {paymentModal.methods.map((method) => (
+            <div
+              key={method._id}
+              className="border border-gray-200 rounded-2xl p-4"
+            >
+              <p className="font-black text-gray-900">
+                {method.type}
+              </p>
+
+              <p className="text-sm text-gray-700 mt-1">
+                {method.accountTitle}
+              </p>
+
+              <p className="text-sm text-gray-700">
+                {method.accountNumber}
+              </p>
+            </div>
+          ))}
+
+          <div className="bg-yellow-50 border border-yellow-100 rounded-2xl p-4 text-sm text-yellow-800 font-medium">
+            Payments are handled directly between renter and owner. 
+            SkillLabz does not process payments.
+          </div>
+        </div>
+      )}
+    </div>
+  </div>
+)}
     </div>
   );
 }

@@ -802,7 +802,7 @@ export const getRentalPaymentInfo = catchAsync(async (req, res, next) => {
 export const updateRentalPaymentStatus = catchAsync(async (req, res, next) => {
   const { paymentStatus } = req.body;
 
-  if (!["pending", "submitted"].includes(paymentStatus)) {
+  if (!["pending", "paid"].includes(paymentStatus)) {
     return next(
       new AppError(
         "Invalid payment status",

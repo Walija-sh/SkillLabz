@@ -204,7 +204,7 @@ const RentalSchema = new mongoose.Schema(
 // -------------------------
 paymentStatus: {
   type: String,
-  enum: ["pending", "submitted"],
+  enum: ["pending", "paid"],
   default: "pending"
 },
 
