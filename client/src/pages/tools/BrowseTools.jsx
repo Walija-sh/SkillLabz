@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import toolService from '../../services/tool.service';
 import Button from '../../components/common/Button';
 import ToolCard from '../../components/tools/ToolCard';
@@ -8,6 +10,9 @@ export default function BrowseTools() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const navigate = useNavigate();
+  const isLoggedIn = useSelector((state) => state.auth.status);
 
   const [filters, setFilters] = useState({
     keyword: '', category: '', city: '', minPrice: '', maxPrice: '',
@@ -30,8 +35,8 @@ export default function BrowseTools() {
             .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
         }
 
-        const response = await (activeFilters.lat && activeFilters.lng 
-          ? toolService.getNearbyTools(activeFilters) 
+        const response = await (activeFilters.lat && activeFilters.lng
+          ? toolService.getNearbyTools(activeFilters)
           : toolService.getAllTools(activeFilters));
 
         setItems(response.items || []);
@@ -49,6 +54,17 @@ export default function BrowseTools() {
     };
     fetchItems();
   }, [appliedFilters]);
+
+  // ✅ Auth-gated navigation handler
+  const handleCardClick = (toolId) => {
+    if (!isLoggedIn) {
+      // replace: true removes /browse-tools from history stack,
+      // so pressing Back on /register goes to Home, not back here
+      navigate('/register', { replace: true });
+    } else {
+      navigate(`/tools/${toolId}`);
+    }
+  };
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
@@ -97,7 +113,7 @@ export default function BrowseTools() {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-10">
-        <ToolFilters 
+        <ToolFilters
           filters={filters} onFilterChange={handleFilterChange} onApply={handleApplyFilters}
           onClear={handleClearFilters} onKeyDown={handleKeyDown} onLocationFetch={handleLocationUpdate}
         />
@@ -106,18 +122,27 @@ export default function BrowseTools() {
           {error && <div className="bg-red-50 text-red-700 p-5 rounded-2xl mb-8 border border-red-100 font-bold">{error}</div>}
 
           {loading ? (
-             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-               {[...Array(6)].map((_, i) => (
-                 <div key={i} className="animate-pulse bg-gray-50 rounded-3xl h-80 border border-gray-100"></div>
-               ))}
-             </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="animate-pulse bg-gray-50 rounded-3xl h-80 border border-gray-100"></div>
+              ))}
+            </div>
           ) : items.length === 0 ? (
             <div className="bg-gray-50 rounded-[3rem] border-2 border-dashed border-gray-200 p-20 text-center">
-               <p className="text-gray-400 font-black uppercase tracking-widest text-sm">No gear listed here yet.</p>
+              <p className="text-gray-400 font-black uppercase tracking-widest text-sm">No gear listed here yet.</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-8">
-              {items.map(item => <ToolCard key={item._id} item={item} />)}
+              {items.map(item => (
+                // ✅ Wrap ToolCard in a div with onClick — no Link needed
+                <div
+                  key={item._id}
+                  onClick={() => handleCardClick(item._id)}
+                  className="cursor-pointer"
+                >
+                  <ToolCard item={item} />
+                </div>
+              ))}
             </div>
           )}
         </div>
