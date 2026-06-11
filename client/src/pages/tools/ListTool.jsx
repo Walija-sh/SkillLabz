@@ -290,7 +290,7 @@ export default function ListTool() {
   // ── JSX ─────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#ECEFF1] px-4 py-10" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-3xl mx-auto">
 
         {/* Page header */}
         <motion.div
