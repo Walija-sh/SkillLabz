@@ -1,56 +1,40 @@
-const MessageBubble = ({
-  message,
-  isOwnMessage,
-}) => {
+import { motion } from "framer-motion";
 
-  
+const NAVY = "#191970";
+
+const MessageBubble = ({ message, isOwnMessage }) => {
+  const fmtTime = (ts) =>
+    new Date(ts)
+      .toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true })
+      .toUpperCase();
+
   return (
-    <div
-      className={`
-        flex
-        ${isOwnMessage ? "justify-end" : "justify-start"}
-      `}
+    <motion.div
+      initial={{ opacity: 0, y: 8, scale: 0.97 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+      className={`flex mb-1 ${isOwnMessage ? "justify-end" : "justify-start"}`}
     >
-
       <div
         className={`
-          max-w-[75%]
-          px-4 py-2 rounded-2xl text-sm
-          ${
-            isOwnMessage
-              ? "bg-blue-600 text-white"
-              : "bg-white border border-gray-200"
+          max-w-[72%] px-4 py-2.5 text-sm leading-relaxed
+          ${isOwnMessage
+            ? "rounded-2xl rounded-br-md text-white"
+            : "rounded-2xl rounded-bl-md bg-white border border-gray-200 text-gray-800"
           }
         `}
+        style={isOwnMessage ? { backgroundColor: NAVY } : {}}
       >
-
-        <p>{message.text}</p>
-
+        <p className="font-medium">{message.text}</p>
         <div
-          className={`
-            text-[10px] mt-1
-            ${
-              isOwnMessage
-                ? "text-blue-100"
-                : "text-gray-400"
-            }
-          `}
+          className={`text-[10px] mt-1 font-bold text-right ${
+            isOwnMessage ? "text-white/50" : "text-gray-400"
+          }`}
         >
-        
-          {new Date(
-message.timestamp
-)
-  .toLocaleTimeString([], {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  })
-  .toUpperCase()}
+          {fmtTime(message.timestamp)}
         </div>
-
       </div>
-
-    </div>
+    </motion.div>
   );
 };
 
