@@ -1,41 +1,92 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux'; 
-import { updateUser } from '../../store/authSlice'; 
-import Input from '../../components/common/Input';
-import Button from '../../components/common/Button';
+import { useDispatch, useSelector } from 'react-redux';
+import { updateUser } from '../../store/authSlice';
+import { motion, AnimatePresence } from 'framer-motion';
 import LocationPicker from '../../components/common/LocationPicker';
-import userService from '../../services/user.service'; 
+import userService from '../../services/user.service';
 import Webcam from 'react-webcam';
 import verificationService from '../../services/verification.service';
 
+// ─── Animation Variants ──────────────────────────────────────────────────────
+const pageStagger = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.12, delayChildren: 0.05 } },
+};
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] } },
+};
+
+const fieldStagger = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.06, delayChildren: 0.1 } },
+};
+
+const fieldFade = {
+  hidden: { opacity: 0, y: 12 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.38, ease: [0.22, 1, 0.36, 1] } },
+};
+
+// ─── Card Section Header ─────────────────────────────────────────────────────
+const CardSectionHeader = ({ title, subtitle }) => (
+  <div className="mb-8">
+    <h2 className="text-base sm:text-lg font-black tracking-widest uppercase text-[#1A1A2E]">{title}</h2>
+    <p className="text-sm font-medium text-gray-400 mt-1">{subtitle}</p>
+  </div>
+);
+
+// ─── Field Label ─────────────────────────────────────────────────────────────
+const FieldLabel = ({ children }) => (
+  <label className="block text-[10px] font-black tracking-widest uppercase text-[#191970] mb-2">
+    {children}
+  </label>
+);
+
+// ─── Input class ─────────────────────────────────────────────────────────────
+const inputClass =
+  'w-full rounded-xl bg-white border border-gray-200 px-4 py-3.5 text-sm font-semibold text-[#1A1A2E] focus:border-[#191970] focus:ring-2 focus:ring-[#191970]/15 outline-none transition-all placeholder:text-gray-300 placeholder:font-normal';
+
+// ─── Alert Banner ────────────────────────────────────────────────────────────
+const AlertBanner = ({ type, children }) => {
+  const styles = {
+    error: 'bg-red-50 border-red-100 text-red-700',
+    success: 'bg-green-50 border-green-100 text-green-700',
+  };
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -6 }}
+      transition={{ duration: 0.28 }}
+      className={`rounded-xl border px-4 py-3 text-xs font-bold ${styles[type]}`}
+    >
+      {children}
+    </motion.div>
+  );
+};
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function CompleteProfile() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-
   const { userData: user } = useSelector((state) => state.auth);
-  
   const [isEditing] = useState(user?.profileCompleted || false);
 
-  // --- BASIC PROFILE STATE ---
+  // --- PROFILE STATE ---
   const [formData, setFormData] = useState({
     bio: user?.bio || '',
     phone: user?.phone || '',
     city: user?.location?.city || '',
     addressText: user?.location?.addressText || '',
-    coordinates: user?.location?.coordinates?.length === 2 ? user.location.coordinates : [0, 0], 
+    coordinates: user?.location?.coordinates?.length === 2 ? user.location.coordinates : [0, 0],
   });
-
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(user?.profileImage?.url || null);
+  const [uiState, setUiState] = useState({ isLoading: false, error: null, success: null });
 
-  const [uiState, setUiState] = useState({
-    isLoading: false,
-    error: null,
-    success: null,
-  });
-
-  // --- IDENTITY VERIFICATION STATE ---
+  // --- VERIFICATION STATE ---
   const webcamRef = useRef(null);
   const [verifUiState, setVerifUiState] = useState({ isLoading: false, error: null, success: null });
   const [verifData, setVerifData] = useState({
@@ -45,7 +96,7 @@ export default function CompleteProfile() {
     cnicFront: null,
     cnicBack: null,
     selfieUrl: null,
-    selfieFile: null
+    selfieFile: null,
   });
 
   // --- PROFILE HANDLERS ---
@@ -54,112 +105,96 @@ export default function CompleteProfile() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-const handleLocationUpdate = (locationData) => {
-  setFormData((prev) => ({
-    ...prev,
-    coordinates: locationData.coordinates,
-    city: locationData.city || "",
-    addressText: locationData.area || "",
-  }));
-};
+  const handleLocationUpdate = (locationData) => {
+    setFormData((prev) => ({
+      ...prev,
+      coordinates: locationData.coordinates,
+      city: locationData.city || '',
+      addressText: locationData.area || '',
+    }));
+  };
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        setUiState({ ...uiState, error: "File size must be less than 5MB.", success: null });
-        return;
-      }
-      setSelectedFile(file);
-      setPreviewUrl(URL.createObjectURL(file)); 
-      setUiState({ ...uiState, error: null }); 
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setUiState({ ...uiState, error: 'File size must be less than 5MB.', success: null });
+      return;
     }
+    setSelectedFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
+    setUiState({ ...uiState, error: null });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     if (formData.coordinates[0] === 0 && formData.coordinates[1] === 0) {
-      setUiState((prev) => ({
-        ...prev,
-        error: "Location access is required. Please use 'Detect My Location' to continue.",
-      }));
+      setUiState((prev) => ({ ...prev, error: "Location required. Use 'Detect My Location' to continue." }));
       return;
     }
-
     setUiState({ isLoading: true, error: null, success: null });
-
     try {
       const profileResponse = await userService.completeProfile(formData);
       const updatedUserData = profileResponse.data?.data || profileResponse.data || profileResponse.user;
-      
-      if (updatedUserData) {
-        dispatch(updateUser(updatedUserData));
-      }
+      if (updatedUserData) dispatch(updateUser(updatedUserData));
 
       if (selectedFile) {
         const imageFormData = new FormData();
-        imageFormData.append('profileImage', selectedFile); 
-        
+        imageFormData.append('profileImage', selectedFile);
         const imageResponse = await userService.uploadProfileImage(imageFormData);
         const newProfileImage = imageResponse.data?.profileImage || imageResponse.data?.data?.profileImage;
-        
-        if (newProfileImage) {
-           dispatch(updateUser({ profileImage: newProfileImage })); 
-        }
+        if (newProfileImage) dispatch(updateUser({ profileImage: newProfileImage }));
       }
 
       setUiState({
         isLoading: false,
         error: null,
-        success: isEditing ? "Changes saved! Redirecting..." : "Profile created! Redirecting...",
+        success: isEditing ? 'Changes saved! Redirecting…' : 'Profile created! Redirecting…',
       });
-
       setTimeout(() => navigate('/profile'), 2000);
-      
     } catch (err) {
       setUiState({
         isLoading: false,
-        error: err.response?.data?.message || "Something went wrong saving your profile.",
+        error: err.response?.data?.message || 'Something went wrong saving your profile.',
         success: null,
       });
     }
   };
 
-  // --- IDENTITY VERIFICATION HANDLERS ---
+  // --- VERIFICATION HANDLERS ---
   const handleVerifChange = (e) => {
     const { name, value } = e.target;
-    
-    // Explicit 13-digit numeric restriction for CNIC
     if (name === 'cnicNumber') {
-      const numericValue = value.replace(/\D/g, ''); // Removes all non-number characters
-      if (numericValue.length > 13) return; // Restricts to exactly 13 digits
-      setVerifData(prev => ({ ...prev, [name]: numericValue }));
+      const numericValue = value.replace(/\D/g, '');
+      if (numericValue.length > 13) return;
+      setVerifData((prev) => ({ ...prev, [name]: numericValue }));
       return;
     }
-
-    setVerifData(prev => ({ ...prev, [name]: value }));
+    setVerifData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleVerifFile = (e, fieldName) => {
     const file = e.target.files[0];
-    if (file) setVerifData(prev => ({ ...prev, [fieldName]: file }));
+    if (file) setVerifData((prev) => ({ ...prev, [fieldName]: file }));
   };
 
   const dataURLtoFile = (dataurl, filename) => {
-    let arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
-        bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
-    while(n--){ u8arr[n] = bstr.charCodeAt(n); }
-    return new File([u8arr], filename, {type:mime});
+    let arr = dataurl.split(','),
+      mime = arr[0].match(/:(.*?);/)[1],
+      bstr = atob(arr[1]),
+      n = bstr.length,
+      u8arr = new Uint8Array(n);
+    while (n--) u8arr[n] = bstr.charCodeAt(n);
+    return new File([u8arr], filename, { type: mime });
   };
 
   const captureSelfie = useCallback(() => {
     const imageSrc = webcamRef.current.getScreenshot();
     if (imageSrc) {
-      setVerifData(prev => ({ 
-        ...prev, 
-        selfieUrl: imageSrc, 
-        selfieFile: dataURLtoFile(imageSrc, 'selfie.jpg') 
+      setVerifData((prev) => ({
+        ...prev,
+        selfieUrl: imageSrc,
+        selfieFile: dataURLtoFile(imageSrc, 'selfie.jpg'),
       }));
     }
   }, [webcamRef]);
@@ -167,10 +202,13 @@ const handleLocationUpdate = (locationData) => {
   const handleVerificationSubmit = async (e) => {
     e.preventDefault();
     if (!verifData.cnicFront || !verifData.cnicBack || !verifData.selfieFile) {
-      setVerifUiState({ error: "Please provide all 3 required images (CNIC Front, Back, and Live Selfie).", isLoading: false, success: null });
+      setVerifUiState({
+        error: 'Please provide all 3 images: CNIC Front, Back, and Live Selfie.',
+        isLoading: false,
+        success: null,
+      });
       return;
     }
-
     setVerifUiState({ isLoading: true, error: null, success: null });
     try {
       const vForm = new FormData();
@@ -180,231 +218,427 @@ const handleLocationUpdate = (locationData) => {
       vForm.append('cnicFront', verifData.cnicFront);
       vForm.append('cnicBack', verifData.cnicBack);
       vForm.append('selfie', verifData.selfieFile);
-
       await verificationService.submitVerification(vForm);
-      
-      // Update local redux state so UI changes instantly to pending banner
       dispatch(updateUser({ identityVerificationStatus: 'pending' }));
-      setVerifUiState({ isLoading: false, error: null, success: "Verification submitted successfully!" });
+      setVerifUiState({ isLoading: false, error: null, success: 'Verification submitted successfully!' });
     } catch (err) {
       setVerifUiState({
         isLoading: false,
-        error: err.response?.data?.message || "Failed to submit verification.",
+        error: err.response?.data?.message || 'Failed to submit verification.',
         success: null,
       });
     }
   };
 
+  // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <div className="flex min-h-[85vh] items-center justify-center px-4 py-12 bg-gray-50/50">
-      <div className="w-full max-w-2xl">
-        
-        {/* PAGE HEADER */}
-        <div className="mb-6 text-center sm:text-left">
-          <h1 className="text-3xl font-black tracking-tight text-gray-900 uppercase">
-            {isEditing ? "Edit Your Profile" : "Complete Your Profile"}
+    <motion.div
+      className="min-h-screen bg-[#ECEFF1] px-4 sm:px-6 py-10 pb-24"
+      variants={pageStagger}
+      initial="hidden"
+      animate="show"
+    >
+      <div className="w-full max-w-2xl mx-auto space-y-5">
+
+        {/* ── PAGE HEADER ── */}
+        <motion.div variants={fadeUp} className="mb-6">
+          <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-[#1A1A2E] uppercase">
+            {isEditing ? (
+              <>Edit Your <span className="text-[#191970]">Profile</span></>
+            ) : (
+              <>Complete Your <span className="text-[#191970]">Profile</span></>
+            )}
           </h1>
-          <p className="mt-1 text-sm font-medium text-gray-500">
-            {isEditing 
-              ? "Update your details or change your photo below." 
-              : "Add a photo and your contact details to build trust in the community."}
+          <p className="mt-3 text-base font-medium text-gray-500">
+            {isEditing
+              ? 'Update your details or change your photo below.'
+              : 'Add a photo and contact details to build trust in the community.'}
           </p>
-        </div>
+        </motion.div>
 
-        <div className="bg-white rounded-3xl p-8 sm:p-10 shadow-sm border border-gray-100">
-          
-          {/* PROFILE FORM SECTION */}
-          {uiState.error && (
-            <div className="mb-6 rounded-2xl bg-red-50 p-4 text-sm font-bold text-red-700 border border-red-100 animate-in fade-in slide-in-from-top-2">
-              {uiState.error}
-            </div>
-          )}
-          {uiState.success && (
-            <div className="mb-6 rounded-2xl bg-blue-50 p-4 text-sm font-bold text-blue-700 border border-blue-100 animate-in fade-in slide-in-from-top-2">
-              {uiState.success}
-            </div>
-          )}
+        {/* ══════════════════════════════════════════════════════════════════════
+            CARD 1 — PROFILE INFORMATION
+        ═══════════════════════════════════════════════════════════════════════ */}
+        <motion.div variants={fadeUp} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8">
 
-          <form className="space-y-7" onSubmit={handleSubmit}>
-            
-            <div className="flex flex-col items-center justify-center pb-4 border-b border-gray-100">
-              <label 
-                htmlFor="photo-upload" 
-                className="relative cursor-pointer group flex flex-col items-center justify-center w-32 h-32 rounded-full border-4 border-dashed border-gray-200 hover:border-blue-600 bg-gray-50 transition-all overflow-hidden"
-              >
-                {previewUrl ? (
-                  <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="flex flex-col items-center text-gray-400 group-hover:text-blue-600 transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8 mb-1">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z" />
-                    </svg>
-                    <span className="text-[10px] font-bold uppercase tracking-wide">Photo</span>
+          <CardSectionHeader
+            title="Profile Information"
+            subtitle="Your public details visible to the community"
+          />
+
+          <AnimatePresence>
+            {uiState.error && (
+              <div className="mb-5">
+                <AlertBanner type="error">{uiState.error}</AlertBanner>
+              </div>
+            )}
+            {uiState.success && (
+              <div className="mb-5">
+                <AlertBanner type="success">{uiState.success}</AlertBanner>
+              </div>
+            )}
+          </AnimatePresence>
+
+          <form onSubmit={handleSubmit}>
+            <motion.div variants={fieldStagger} initial="hidden" animate="show" className="space-y-5">
+
+              {/* ── Photo Upload ── */}
+              <motion.div variants={fieldFade} className="flex flex-col items-center gap-3 pb-6 border-b border-gray-100">
+                <label
+                  htmlFor="photo-upload"
+                  className="relative cursor-pointer group"
+                >
+                  <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-gray-200 group-hover:border-[#191970] transition-colors bg-[#ECEFF1] shadow-sm">
+                    {previewUrl ? (
+                      <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center gap-1">
+                      </div>
+                    )}
+                    {previewUrl && (
+                      <div className="absolute inset-0 rounded-full bg-[#1A1A2E]/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="text-white text-[9px] font-black uppercase tracking-widest">Change</span>
+                      </div>
+                    )}
                   </div>
-                )}
-                
-                {previewUrl && (
-                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <span className="text-white text-[10px] font-bold uppercase tracking-widest">Change</span>
-                  </div>
-                )}
-              </label>
-              <input 
-                id="photo-upload" 
-                type="file" 
-                accept="image/jpeg, image/png, image/webp" 
-                className="hidden" 
-                onChange={handleFileChange}
-              />
-            </div>
+                </label>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                  {previewUrl ? 'Click to change photo' : 'Upload profile photo'}
+                </p>
+                <input
+                  id="photo-upload"
+                  type="file"
+                  accept="image/jpeg, image/png, image/webp"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
+              </motion.div>
 
-            <div>
-              <label className="block text-sm font-bold text-gray-900 mb-2 tracking-tight">Bio*</label>
-              <textarea
-                name="bio"
-                rows={3}
-                placeholder="Share a bit about your expertise or why you're joining SkillLabz..."
-                className="w-full rounded-2xl bg-gray-50 border border-gray-200 px-5 py-4 text-sm focus:ring-2 focus:ring-blue-600 outline-none transition-all placeholder:text-gray-400"
-                value={formData.bio}
-                onChange={handleChange}
-                disabled={uiState.isLoading}
-                required
-              />
-            </div>
+              {/* Bio */}
+              <motion.div variants={fieldFade}>
+                <FieldLabel>Bio *</FieldLabel>
+                <textarea
+                  name="bio"
+                  rows={3}
+                  placeholder="Share your expertise or why you're joining SkillLabz…"
+                  className={`${inputClass} resize-none`}
+                  value={formData.bio}
+                  onChange={handleChange}
+                  disabled={uiState.isLoading}
+                  required
+                />
+              </motion.div>
 
-            <div className="pt-2">
-              <Input label="Phone Number*" name="phone" type="tel" placeholder="e.g., 03149117269" value={formData.phone} onChange={handleChange} disabled={uiState.isLoading} required />
-            </div>
+              {/* Phone */}
+              <motion.div variants={fieldFade}>
+                <FieldLabel>Phone Number *</FieldLabel>
+                <input
+                  type="tel"
+                  name="phone"
+                  placeholder="e.g., 03149117269"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  className={inputClass}
+                  disabled={uiState.isLoading}
+                  required
+                />
+              </motion.div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-              <Input label="City*" name="city" placeholder="e.g., Taxila" value={formData.city} onChange={handleChange} disabled={uiState.isLoading} required />
-              <Input label="Area / Markaz*" name="addressText" placeholder="e.g., G-11 Markaz" value={formData.addressText} onChange={handleChange} disabled={uiState.isLoading} required />
-            </div>
+              {/* City + Area */}
+              <motion.div variants={fieldFade} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <FieldLabel>City *</FieldLabel>
+                  <input
+                    type="text"
+                    name="city"
+                    placeholder="e.g., Taxila"
+                    value={formData.city}
+                    onChange={handleChange}
+                    className={inputClass}
+                    disabled={uiState.isLoading}
+                    required
+                  />
+                </div>
+                <div>
+                  <FieldLabel>Area / Markaz *</FieldLabel>
+                  <input
+                    type="text"
+                    name="addressText"
+                    placeholder="e.g., G-11 Markaz"
+                    value={formData.addressText}
+                    onChange={handleChange}
+                    className={inputClass}
+                    disabled={uiState.isLoading}
+                    required
+                  />
+                </div>
+              </motion.div>
 
-            <div className="pt-2">
-              <LocationPicker currentCoordinates={formData.coordinates} onLocationSelect={handleLocationUpdate} />
-            </div>
+              {/* Location Picker */}
+              <motion.div variants={fieldFade}>
+                <FieldLabel>Location Mapping </FieldLabel>
+                <div className="border border-gray-200 rounded-xl overflow-hidden [&>div>label:first-child]:hidden [&>label:first-child]:hidden [&_label.text-gray-900]:hidden [&>div>h3:first-child]:hidden">
+                  <LocationPicker
+                    currentCoordinates={formData.coordinates}
+                    onLocationSelect={handleLocationUpdate}
+                  />
+                </div>
+              </motion.div>
 
-            <div className="pt-8 flex gap-4">
+            </motion.div>
+
+            {/* ── Action Buttons ── */}
+            <div className="flex gap-3 mt-7 pt-6 border-t border-gray-100">
               {isEditing && (
-                <Button type="button" onClick={() => navigate('/profile')} className="w-full sm:w-1/3 py-4 bg-gray-100 text-gray-700 font-bold hover:bg-gray-200" disabled={uiState.isLoading}>
+                <button
+                  type="button"
+                  onClick={() => navigate('/profile')}
+                  disabled={uiState.isLoading}
+                  className="flex-1 py-4 rounded-xl bg-white border border-gray-200 text-[#1A1A2E] text-xs font-black uppercase tracking-widest hover:bg-gray-50 transition-colors"
+                >
                   Cancel
-                </Button>
+                </button>
               )}
-              <Button type="submit" className={`w-full py-4 bg-blue-600 text-lg font-black shadow-xl shadow-blue-100 hover:shadow-blue-200 transition-all active:scale-[0.98] ${isEditing ? 'sm:w-2/3' : ''}`} isLoading={uiState.isLoading}>
-                {isEditing ? "Save Profile Changes" : "Complete Profile"}
-              </Button>
+              <button
+                type="submit"
+                disabled={uiState.isLoading}
+                className="flex-[2] py-4 rounded-xl bg-[#191970] text-white text-xs font-black uppercase tracking-widest hover:bg-[#0f0f50] transition-colors disabled:opacity-50 shadow-lg shadow-[#191970]/20"
+              >
+                {uiState.isLoading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    Processing…
+                  </span>
+                ) : isEditing ? (
+                  'Save Profile Changes'
+                ) : (
+                  'Complete Profile'
+                )}
+              </button>
             </div>
           </form>
+        </motion.div>
 
-          {/* --- NEW: IDENTITY VERIFICATION SECTION --- */}
-          <div className="mt-16 pt-10 border-t-2 border-gray-100">
-            <div className="mb-8">
-              <h2 className="text-2xl font-black tracking-tight text-gray-900 uppercase">Identity Verification</h2>
-              <p className="mt-1 text-sm text-gray-500">Secure your account by verifying your identity with your CNIC and a live selfie.</p>
-            </div>
+        {/* ══════════════════════════════════════════════════════════════════════
+            CARD 2 — IDENTITY VERIFICATION
+        ═══════════════════════════════════════════════════════════════════════ */}
+        <motion.div variants={fadeUp} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8">
 
-            {/* STATUS BANNERS */}
-            {user?.identityVerificationStatus === 'pending' && (
-              <div className="rounded-2xl bg-yellow-50 p-6 border border-yellow-200">
-                <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 bg-yellow-500 rounded-full animate-pulse"></div>
-                  <h3 className="font-bold text-yellow-800 text-lg">Verification Pending Review</h3>
-                </div>
-                <p className="mt-2 text-yellow-700 text-sm">Your documents have been received and are currently being reviewed by an admin. We will notify you once a decision is made.</p>
-              </div>
-            )}
+          <CardSectionHeader
+            title="Identity Verification"
+            subtitle="Verify with your CNIC to earn a trusted badge"
+          />
 
-            {user?.identityVerificationStatus === 'approved' && (
-              <div className="rounded-2xl bg-green-50 p-6 border border-green-200">
-                <div className="flex items-center gap-3">
-                  <span className="text-green-600 text-xl">✅</span>
-                  <h3 className="font-bold text-green-800 text-lg">Verification Successful</h3>
-                </div>
-                <p className="mt-2 text-green-700 text-sm">Your identity has been verified. You now have the trusted badge on your profile!</p>
-              </div>
-            )}
+          {/* STATUS: PENDING */}
+          {user?.identityVerificationStatus === 'pending' && (
+            <motion.div
+              variants={fadeUp}
+              className="rounded-xl bg-amber-50 border border-amber-200 p-5 flex flex-col items-start gap-2"
+            >
+              <h3 className="text-base sm:text-lg font-black uppercase tracking-widest text-amber-800">
+                Verification Pending Review
+              </h3>
+              <p className="text-sm font-medium text-amber-700 leading-relaxed">
+                Your documents have been received and are under review. We'll notify you once a decision is made.
+              </p>
+            </motion.div>
+          )}
 
-            {/* ACTIVE VERIFICATION FORM */}
-            {(user?.identityVerificationStatus === 'rejected' || !user?.identityVerificationStatus || user?.identityVerificationStatus === 'not_submitted') && (
-              <div className="space-y-6">
-                
+          {/* STATUS: APPROVED */}
+          {user?.identityVerificationStatus === 'approved' && (
+            <motion.div
+              variants={fadeUp}
+              className="rounded-xl bg-green-50 border border-green-100 p-5 flex flex-col items-start gap-2"
+            >
+              <h3 className="text-base sm:text-lg font-black uppercase tracking-widest text-green-800">
+                Identity Verified
+              </h3>
+              <p className="text-sm font-medium text-green-700 leading-relaxed">
+                Your profile now displays a verified trusted badge.
+              </p>
+            </motion.div>
+          )}
+
+          {/* ACTIVE FORM */}
+          {(user?.identityVerificationStatus === 'rejected' ||
+            !user?.identityVerificationStatus ||
+            user?.identityVerificationStatus === 'not_submitted') && (
+            <div className="space-y-5">
+
+              <AnimatePresence>
                 {user?.identityVerificationStatus === 'rejected' && (
-                  <div className="rounded-2xl bg-red-50 p-4 border border-red-200 text-sm text-red-700 font-medium">
-                    Your previous request was rejected. Please ensure your photos are bright and clear, and your details match your CNIC exactly, then try again.
-                  </div>
+                  <motion.div
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="rounded-xl bg-red-50 border border-red-100 p-4 text-sm text-red-700 font-medium"
+                  >
+                    Your previous request was rejected. Ensure photos are clear and details match your CNIC exactly.
+                  </motion.div>
                 )}
+                {verifUiState.error && (
+                  <AlertBanner type="error">{verifUiState.error}</AlertBanner>
+                )}
+                {verifUiState.success && (
+                  <AlertBanner type="success">{verifUiState.success}</AlertBanner>
+                )}
+              </AnimatePresence>
 
-                {verifUiState.error && <div className="rounded-xl bg-red-50 p-4 text-sm font-bold text-red-700">{verifUiState.error}</div>}
-                {verifUiState.success && <div className="rounded-xl bg-green-50 p-4 text-sm font-bold text-green-700">{verifUiState.success}</div>}
+              <form onSubmit={handleVerificationSubmit}>
+                <motion.div variants={fieldStagger} initial="hidden" animate="show" className="space-y-5">
 
-                <form onSubmit={handleVerificationSubmit} className="space-y-6 bg-gray-50 p-6 rounded-3xl border border-gray-100">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Input label="Full Name (as on CNIC)*" name="fullName" value={verifData.fullName} onChange={handleVerifChange} required disabled={verifUiState.isLoading} />
-                    <Input 
-                      label="CNIC Number (without dashes)*" 
-                      name="cnicNumber" 
-                      value={verifData.cnicNumber} 
-                      onChange={handleVerifChange} 
-                      required 
-                      disabled={verifUiState.isLoading} 
-                      maxLength="13" 
-                      inputMode="numeric" 
-                      pattern="\d*" 
+                  {/* Full Name + CNIC */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <motion.div variants={fieldFade}>
+                      <FieldLabel>Full Name (as on CNIC) *</FieldLabel>
+                      <input
+                        type="text"
+                        name="fullName"
+                        value={verifData.fullName}
+                        onChange={handleVerifChange}
+                        required
+                        disabled={verifUiState.isLoading}
+                        placeholder="Muhammad Ali"
+                        className={inputClass}
+                      />
+                    </motion.div>
+                    <motion.div variants={fieldFade}>
+                      <FieldLabel>CNIC Number (no dashes) *</FieldLabel>
+                      <input
+                        type="text"
+                        name="cnicNumber"
+                        value={verifData.cnicNumber}
+                        onChange={handleVerifChange}
+                        required
+                        disabled={verifUiState.isLoading}
+                        maxLength="13"
+                        inputMode="numeric"
+                        pattern="\d*"
+                        placeholder="3740512345678"
+                        className={inputClass}
+                      />
+                    </motion.div>
+                  </div>
+
+                  {/* Date of Birth */}
+                  <motion.div variants={fieldFade} className="sm:max-w-xs">
+                    <FieldLabel>Date of Birth *</FieldLabel>
+                    <input
+                      type="date"
+                      name="dateOfBirth"
+                      value={verifData.dateOfBirth}
+                      onChange={handleVerifChange}
+                      required
+                      disabled={verifUiState.isLoading}
+                      className={inputClass}
                     />
-                    <Input label="Date of Birth*" type="date" name="dateOfBirth" value={verifData.dateOfBirth} onChange={handleVerifChange} required disabled={verifUiState.isLoading} />
-                  </div>
+                  </motion.div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
-                    <div>
-                      <label className="block text-sm font-bold text-gray-900 mb-2">CNIC Front Image*</label>
-                      <input type="file" accept="image/*" onChange={(e) => handleVerifFile(e, 'cnicFront')} required disabled={verifUiState.isLoading} className="w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                  {/* CNIC Images */}
+                  <motion.div variants={fieldFade}>
+                    <FieldLabel>CNIC Images *</FieldLabel>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-1">
+                      {[
+                        { key: 'cnicFront', label: 'CNIC Front' },
+                        { key: 'cnicBack', label: 'CNIC Back' },
+                      ].map(({ key, label }) => (
+                        <label
+                          key={key}
+                          className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-200 hover:border-[#191970]/40 rounded-xl py-7 px-4 cursor-pointer transition-colors bg-[#FAFAFA] group"
+                        >
+                          {verifData[key] ? (
+                            <span className="text-[10px] font-black uppercase tracking-widest text-[#191970]">
+                              {verifData[key].name.length > 16
+                                ? verifData[key].name.slice(0, 14) + '…'
+                                : verifData[key].name}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 group-hover:text-[#191970]/60 transition-colors">
+                              {label}
+                            </span>
+                          )}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleVerifFile(e, key)}
+                            disabled={verifUiState.isLoading}
+                            className="hidden"
+                          />
+                        </label>
+                      ))}
                     </div>
-                    <div>
-                      <label className="block text-sm font-bold text-gray-900 mb-2">CNIC Back Image*</label>
-                      <input type="file" accept="image/*" onChange={(e) => handleVerifFile(e, 'cnicBack')} required disabled={verifUiState.isLoading} className="w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
-                    </div>
-                  </div>
+                  </motion.div>
 
-                  {/* LIVE WEBCAM SECTION */}
-                  <div className="pt-4 border-t border-gray-200 mt-4">
-                    <label className="block text-sm font-bold text-gray-900 mb-4">Live Selfie Verification*</label>
-                    <div className="flex flex-col md:flex-row gap-6">
-                      <div className="w-full md:w-1/2 overflow-hidden rounded-2xl border-4 border-gray-200 bg-black aspect-video relative">
-                        {verifData.selfieUrl ? (
-                          <img src={verifData.selfieUrl} alt="Selfie preview" className="w-full h-full object-cover" />
-                        ) : (
-                          <Webcam audio={false} ref={webcamRef} mirrored={true} screenshotFormat="image/jpeg" className="w-full h-full object-cover" />
-                        )}
+                  {/* ── Webcam ── */}
+                  <motion.div variants={fieldFade}>
+                    <FieldLabel>Live Selfie Verification *</FieldLabel>
+                    <div className="border border-gray-200 rounded-xl overflow-hidden bg-[#FAFAFA]">
+                      <div className="flex flex-col md:flex-row gap-0">
+
+                        {/* Camera feed */}
+                        <div className="w-full md:w-1/2 aspect-video bg-[#1A1A2E] relative overflow-hidden">
+                          {verifData.selfieUrl ? (
+                            <img src={verifData.selfieUrl} alt="Selfie preview" className="w-full h-full object-cover" />
+                          ) : (
+                            <Webcam
+                              audio={false}
+                              ref={webcamRef}
+                              mirrored={true}
+                              screenshotFormat="image/jpeg"
+                              className="w-full h-full object-cover"
+                            />
+                          )}
+                        </div>
+
+                        {/* Selfie controls */}
+                        <div className="w-full md:w-1/2 p-5 flex flex-col justify-center gap-4">
+                          <p className="text-xs font-medium text-gray-400 leading-relaxed">
+                            Face should be clearly visible and well-lit. Remove sunglasses or hats before capturing.
+                          </p>
+                          {verifData.selfieUrl ? (
+                            <button
+                              type="button"
+                              onClick={() => setVerifData((prev) => ({ ...prev, selfieUrl: null, selfieFile: null }))}
+                              className="w-full py-3 rounded-xl bg-white border border-gray-200 text-[#1A1A2E] text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 transition-colors"
+                            >
+                              Retake Photo
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={captureSelfie}
+                              className="w-full py-3 rounded-xl bg-[#191970] text-white text-[10px] font-black uppercase tracking-widest hover:bg-[#0f0f50] transition-colors shadow-md shadow-[#191970]/20"
+                            >
+                              Capture Face
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      <div className="w-full md:w-1/2 flex flex-col justify-center gap-4">
-                        <p className="text-sm text-gray-500">Please ensure your face is clearly visible and well-lit. Do not wear sunglasses or hats.</p>
-                        {verifData.selfieUrl ? (
-                          <Button type="button" onClick={() => setVerifData(prev => ({...prev, selfieUrl: null, selfieFile: null}))} className="bg-gray-200 text-gray-800 hover:bg-gray-300">
-                            Retake Photo
-                          </Button>
-                        ) : (
-                          <Button type="button" onClick={captureSelfie} className="bg-gray-800 text-white hover:bg-black">
-                            Capture Face
-                          </Button>
-                        )}
-                      </div>
                     </div>
-                  </div>
+                  </motion.div>
 
-                  <div className="pt-6">
-                    <Button type="submit" isLoading={verifUiState.isLoading} className="w-full py-4 bg-gray-900 text-lg font-black shadow-xl hover:bg-black transition-all active:scale-[0.98]">
-                      Submit for Verification
-                    </Button>
-                  </div>
-                </form>
-              </div>
-            )}
-          </div>
+                </motion.div>
 
-        </div>
+                {/* Submit */}
+                <div className="mt-7 pt-6 border-t border-gray-100">
+                  <button
+                    type="submit"
+                    disabled={verifUiState.isLoading}
+                    className="w-full py-4 rounded-xl bg-[#191970] text-white text-xs font-black uppercase tracking-widest hover:bg-[#0f0f50] transition-colors disabled:opacity-50 shadow-lg shadow-[#191970]/20"
+                  >
+                    {verifUiState.isLoading ? (
+                      <span className="flex items-center justify-center gap-2">
+                        Submitting…
+                      </span>
+                    ) : (
+                      'Submit for Verification'
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+        </motion.div>
+
       </div>
-    </div>
+    </motion.div>
   );
 }
