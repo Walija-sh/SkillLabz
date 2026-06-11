@@ -242,7 +242,7 @@ export default function CompleteProfile() {
 
         {/* ── PAGE HEADER ── */}
         <motion.div variants={fadeUp} className="mb-6">
-          <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-[#1A1A2E] uppercase">
+          <h1 className="text-4xl sm:text-3xl font-black tracking-tight text-[#1A1A2E] uppercase">
             {isEditing ? (
               <>Edit Your <span className="text-[#191970]">Profile</span></>
             ) : (
