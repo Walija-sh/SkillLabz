@@ -382,7 +382,7 @@ export default function Profile() {
                 <button 
                   onClick={handleVerifyEmail} 
                   disabled={isSending}
-                  className="w-full sm:w-auto px-6 py-3 bg-[#191970] text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-900 transition-colors shadow-lg shadow-[#191970]/20 disabled:opacity-50"
+                  className="w-full sm:w-auto px-6 py-3 bg-[#191970] text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-700 transition-colors shadow-lg shadow-[#191970]/20 disabled:opacity-50"
                 >
                   {isSending ? "Sending..." : "Verify Email"}
                 </button>
@@ -611,7 +611,7 @@ export default function Profile() {
                   type="button"
                   onClick={handleSavePaymentMethod}
                   disabled={isAddingPayment}
-                  className={`w-full py-4 rounded-[16px] bg-[#191970] text-white text-xs font-black uppercase tracking-widest shadow-xl shadow-[#191970]/20 hover:bg-blue-900 transition-all disabled:opacity-50 ${editingMethodId ? 'sm:w-2/3' : ''}`}
+                  className={`w-full py-4 rounded-[16px] bg-[#191970] text-white text-xs font-black uppercase tracking-widest shadow-xl shadow-[#191970]/20 hover:bg-blue-700 transition-all disabled:opacity-50 ${editingMethodId ? 'sm:w-2/3' : ''}`}
                 >
                   {isAddingPayment ? "Saving..." : editingMethodId ? "Update Method" : "Add Payment Method"}
                 </button>
