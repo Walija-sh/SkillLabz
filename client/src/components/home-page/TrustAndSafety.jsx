@@ -19,7 +19,7 @@ const trustCardVariants = {
 
 export default function TrustAndSafety() {
   return (
-    <section className="pt-8 md:pt-12 pb-12 md:pb-20 px-4 bg-[#ECEFF1]">
+    <section id="trust-and-safety" className="pt-8 md:pt-12 pb-12 md:pb-20 px-4 bg-[#ECEFF1]">
       <div className="max-w-7xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
 

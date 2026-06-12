@@ -1,10 +1,23 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
+import { motion, AnimatePresence } from 'framer-motion';
 import { login } from '../../store/authSlice';
 import authService from '../../services/auth.service';
-import Input from '../../components/common/Input';
-import Button from '../../components/common/Button';
+
+// Framer Motion Variants
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1, delayChildren: 0.2 },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } },
+};
 
 export default function Register() {
   const navigate = useNavigate();
@@ -15,11 +28,11 @@ export default function Register() {
     email: '',
     password: '',
   });
+  const [showPassword, setShowPassword] = useState(false);
   
   const [uiState, setUiState] = useState({
     isLoading: false,
     error: null,
-    success: null,
   });
 
   const handleChange = (e) => {
@@ -32,102 +45,165 @@ export default function Register() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setUiState({ isLoading: true, error: null, success: null });
+    setUiState({ isLoading: true, error: null });
 
     try {
-      // 1. Trigger signup call (which now returns a token and logs user in)
       const result = await authService.signup(formData);
-      
       if (result && result.data) {
-        // 2. Dispatch Redux action to save the user session globally
         dispatch(login(result.data));
-
-        setUiState({
-          isLoading: false,
-          error: null,
-          success: 'Account created successfully! Redirecting to dashboard...',
-        });
-
-        // 3. Redirect directly to the secure Dashboard after a brief delay
-        setTimeout(() => {
-          navigate('/'); 
-        }, 1500);
+        navigate('/');
       }
-      
     } catch (err) {
       setUiState({
         isLoading: false,
         error: err?.message || 'Registration failed. Please try again.',
-        success: null,
       });
     }
   };
 
   return (
-    <div className="flex min-h-[80vh] items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md space-y-8 rounded-2xl bg-white p-10 shadow-xl border border-gray-100">
-        
-        <div className="text-center">
-          <h2 className="text-3xl font-bold tracking-tight text-gray-900">Create your account</h2>
-          <p className="mt-3 text-sm text-gray-500">Join SkillLabz and start sharing tools today.</p>
+    <div className="flex min-h-screen bg-gray-100">
+      {/* Left Brand Column */}
+      <motion.div
+        className="hidden w-1/2 flex-col items-center justify-center bg-gray-100 p-12 lg:flex relative"
+        initial={{ opacity: 0, x: -50 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.7, ease: 'easeOut' }}
+      >
+        <div className="max-w-md w-full text-center space-y-8">
+          <img src="/logo.png" alt="SkillLabz Logo" className="mx-auto mb-8 w-32" />
+
+          <div className="space-y-3">
+            <h1 className="text-4xl font-bold tracking-tight text-gray-900">Create your account</h1>
+            <p className="text-lg text-gray-500">Join SkillLabz and start sharing tools today.</p>
+          </div>
         </div>
+      </motion.div>
 
-        {uiState.error && (
-          <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700 border border-red-100" role="alert">
-            {uiState.error}
+      {/* Right Form Column */}
+      <div className="flex w-full items-center justify-center bg-gray-100 p-6 sm:p-12 lg:w-1/2">
+        <motion.div
+          className="w-full max-w-md space-y-8"
+          variants={containerVariants}
+          initial="hidden"
+          animate="show"
+        >
+          {/* Mobile Header (Hidden on Desktop) */}
+          <div className="mb-8 space-y-4 text-center lg:hidden">
+            <img src="/logo.png" alt="SkillLabz Logo" className="mx-auto w-24" />
+            <h2 className="text-3xl font-bold tracking-tight text-gray-900">Create your account</h2>
           </div>
-        )}
-        
-        {uiState.success && (
-          <div className="rounded-lg bg-green-50 p-4 text-sm text-green-700 border border-green-100" role="alert">
-            {uiState.success}
-          </div>
-        )}
 
-        <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
-          <Input
-            label="Username"
-            name="username"
-            placeholder="johndoe"
-            value={formData.username}
-            onChange={handleChange}
-            disabled={uiState.isLoading}
-            required
-          />
+          <AnimatePresence mode="wait">
+            {uiState.error && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="rounded-xl border border-red-100 bg-red-50 p-4 text-sm text-red-700"
+                role="alert"
+              >
+                {uiState.error}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-          <Input
-            label="Email address"
-            name="email"
-            type="email"
-            placeholder="you@example.com"
-            value={formData.email}
-            onChange={handleChange}
-            disabled={uiState.isLoading}
-            required
-          />
+          <form className="space-y-6" onSubmit={handleSubmit}>
+            <motion.div variants={itemVariants} className="space-y-5">
+              <div className="space-y-1">
+                <label htmlFor="username" className="ml-1 block text-sm font-medium text-gray-700">
+                  Username
+                </label>
+                <input
+                  id="username"
+                  name="username"
+                  type="text"
+                  autoComplete="username"
+                  placeholder="johndoe"
+                  value={formData.username}
+                  onChange={handleChange}
+                  disabled={uiState.isLoading}
+                  required
+                  className="w-full rounded-2xl border border-gray-300 px-5 py-3 text-gray-900 outline-none transition focus:border-blue-700 focus:ring-1 focus:ring-blue-700 disabled:bg-gray-50"
+                />
+              </div>
 
-          <Input
-            label="Password"
-            name="password"
-            type="password"
-            placeholder="••••••••"
-            value={formData.password}
-            onChange={handleChange}
-            disabled={uiState.isLoading}
-            required
-          />
+              <div className="space-y-1">
+                <label htmlFor="email" className="ml-1 block text-sm font-medium text-gray-700">
+                  Email address
+                </label>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                  value={formData.email}
+                  onChange={handleChange}
+                  disabled={uiState.isLoading}
+                  required
+                  className="w-full rounded-2xl border border-gray-300 px-5 py-3 text-gray-900 outline-none transition focus:border-blue-700 focus:ring-1 focus:ring-blue-700 disabled:bg-gray-50"
+                />
+              </div>
 
-          <Button type="submit" className="w-full" isLoading={uiState.isLoading}>
-            Sign Up
-          </Button>
-        </form>
+              <div className="space-y-1">
+                <label htmlFor="password" className="ml-1 block text-sm font-medium text-gray-700">
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    id="password"
+                    name="password"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    placeholder="••••••••"
+                    value={formData.password}
+                    onChange={handleChange}
+                    disabled={uiState.isLoading}
+                    required
+                    className="w-full rounded-2xl border border-gray-300 px-5 py-3 pr-12 text-gray-900 outline-none transition focus:border-blue-700 focus:ring-1 focus:ring-blue-700 disabled:bg-gray-50"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute inset-y-0 right-4 flex items-center justify-center text-gray-400 transition hover:text-gray-600 focus:outline-none"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? (
+                      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M2.5 12s3.8-6.5 9.5-6.5S21.5 12 21.5 12s-3.8 6.5-9.5 6.5S2.5 12 2.5 12Z" />
+                        <path d="M9.5 12a2.5 2.5 0 1 0 5 0a2.5 2.5 0 0 0-5 0Z" />
+                        <path d="m4 4 16 16" />
+                      </svg>
+                    ) : (
+                      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M2.5 12s3.8-6.5 9.5-6.5S21.5 12 21.5 12s-3.8 6.5-9.5 6.5S2.5 12 2.5 12Z" />
+                        <path d="M9.5 12a2.5 2.5 0 1 0 5 0a2.5 2.5 0 0 0-5 0Z" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
 
-        <p className="text-center text-sm text-gray-600">
-          Already have an account?{' '}
-          <Link to="/login" className="font-semibold text-blue-600 hover:text-blue-500">
-            Log in here
-          </Link>
-        </p>
+            <motion.div variants={itemVariants} whileHover={{ scale: 1.02 }} transition={{ type: 'spring', stiffness: 300 }}>
+              <button
+                type="submit"
+                disabled={uiState.isLoading}
+                className="w-full rounded-2xl bg-blue-700 py-4 text-base font-semibold text-white shadow-lg shadow-blue-900/20 transition-all hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {uiState.isLoading ? 'Signing up...' : 'Sign Up'}
+              </button>
+            </motion.div>
+          </form>
+
+          <motion.p variants={itemVariants} className="pt-4 text-center text-sm text-gray-600">
+            Already have an account?{' '}
+            <Link to="/login" className="font-semibold text-blue-700 transition-colors hover:text-blue-800">
+              Log in here
+            </Link>
+          </motion.p>
+        </motion.div>
       </div>
     </div>
   );

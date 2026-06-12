@@ -1,31 +1,68 @@
 import React, { useMemo } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { motion } from 'framer-motion';
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, Dot
+} from 'recharts';
 
+const NAVY       = '#191970';
+const NAVY_LIGHT = '#e8eaf6';
+
+// ─── Custom Tooltip ───────────────────────────────────────────────────────────
+const CustomTooltip = ({ active, payload, label }) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.15, ease: 'easeOut' }}
+      className="bg-white border border-gray-100 rounded-2xl px-4 py-3 shadow-lg"
+    >
+      <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">{label}</p>
+      <p className="text-base font-black" style={{ color: NAVY }}>
+        {payload[0].value} rental{payload[0].value !== 1 ? 's' : ''}
+      </p>
+    </motion.div>
+  );
+};
+
+// ─── Custom Dot ───────────────────────────────────────────────────────────────
+const CustomDot = (props) => {
+  const { cx, cy, value } = props;
+  if (value === 0) return null;
+  return (
+    <motion.circle
+      cx={cx}
+      cy={cy}
+      r={5}
+      fill="#fff"
+      stroke={NAVY}
+      strokeWidth={2.5}
+      initial={{ scale: 0, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+    />
+  );
+};
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function WeeklyRentalsChart({ rentals = [] }) {
-  
-  // Dynamically calculate the rental requests for the current week
+
   const chartData = useMemo(() => {
     const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    
-    // 1. Initialize data array with 0 rentals for each day
-    const data = daysOfWeek.map(day => ({ day, rentals: 0 }));
+    const data = daysOfWeek.map((day) => ({ day, rentals: 0 }));
 
-    // 2. Figure out what date the current Monday was
     const today = new Date();
-    const dayOfWeek = today.getDay(); // 0 is Sunday, 1 is Monday, etc.
+    const dayOfWeek = today.getDay();
     const diffToMonday = today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
     const startOfWeek = new Date(today.setDate(diffToMonday));
-    startOfWeek.setHours(0, 0, 0, 0); // Reset to midnight
+    startOfWeek.setHours(0, 0, 0, 0);
 
-    // 3. Count rentals created this week
-    rentals.forEach(rental => {
-      // Use createdAt to see when the request was made
-      const createdAt = new Date(rental.createdAt || rental.startDate); 
-      
+    rentals.forEach((rental) => {
+      const createdAt = new Date(rental.createdAt || rental.startDate);
       if (createdAt >= startOfWeek) {
-        let dayIndex = createdAt.getDay() - 1; // 0 = Mon, 6 = Sun
-        if (dayIndex === -1) dayIndex = 6; // Fix for Sunday (which is normally 0)
-        
+        let dayIndex = createdAt.getDay() - 1;
+        if (dayIndex === -1) dayIndex = 6;
         if (dayIndex >= 0 && dayIndex <= 6) {
           data[dayIndex].rentals += 1;
         }
@@ -35,27 +72,80 @@ export default function WeeklyRentalsChart({ rentals = [] }) {
     return data;
   }, [rentals]);
 
+  const totalThisWeek = chartData.reduce((sum, d) => sum + d.rentals, 0);
+  const peakDay = chartData.reduce((best, d) => (d.rentals > best.rentals ? d : best), { day: '', rentals: 0 });
+
   return (
-    <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm h-full flex flex-col">
-      <h3 className="text-base font-bold text-gray-900 mb-6">Weekly Rentals</h3>
-      <div className="flex-1 w-full min-h-62.5">
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+      className="h-full flex flex-col"
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h3
+            className="text-base font-black uppercase tracking-tight"
+            style={{ color: NAVY }}
+          >
+            Weekly Rentals
+          </h3>
+          <p className="text-[11px] font-bold text-gray-900 uppercase tracking-widest mt-0.5">
+            This week
+          </p>
+        </div>
+        {totalThisWeek > 0 && (
+          <div
+            className="px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest"
+            style={{ backgroundColor: NAVY_LIGHT, color: NAVY }}
+          >
+            {totalThisWeek} total · {peakDay.day} peak
+          </div>
+        )}
+      </div>
+
+      {/* Chart */}
+      <div className="flex-1 w-full" style={{ minHeight: 220 }}>
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-            <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 12 }} dy={10} />
-            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 12 }} dx={-10} allowDecimals={false} />
-            <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-            <Line 
-              type="monotone" 
-              dataKey="rentals" 
-              stroke="#2563eb" 
-              strokeWidth={2} 
-              dot={{ r: 4, fill: '#fff', stroke: '#2563eb', strokeWidth: 2 }} 
-              activeDot={{ r: 6, fill: '#2563eb', stroke: '#fff', strokeWidth: 2 }} 
+          <LineChart
+            data={chartData}
+            margin={{ top: 10, right: 4, left: -18, bottom: 0 }}
+          >
+            <CartesianGrid
+              strokeDasharray="3 3"
+              vertical={false}
+              stroke="#ECEFF1"
+            />
+            <XAxis
+              dataKey="day"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: '#000000', fontSize: 11, fontWeight: 700, letterSpacing: '0.05em' }}
+              dy={10}
+            />
+            <YAxis
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: '#000000', fontSize: 11, fontWeight: 700 }}
+              dx={-6}
+              allowDecimals={false}
+            />
+            <Tooltip
+              cursor={{ stroke: '#ECEFF1', strokeWidth: 2 }}
+              content={<CustomTooltip />}
+            />
+            <Line
+              type="monotone"
+              dataKey="rentals"
+              stroke={NAVY}
+              strokeWidth={2.5}
+              dot={<CustomDot />}
+              activeDot={{ r: 7, fill: NAVY, stroke: '#fff', strokeWidth: 2.5 }}
             />
           </LineChart>
         </ResponsiveContainer>
       </div>
-    </div>
+    </motion.div>
   );
 }

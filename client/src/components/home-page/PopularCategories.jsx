@@ -19,6 +19,7 @@ const sectionInView = {
 export default function PopularCategories() {
   return (
     <motion.section
+      id="categories"
       className="pt-8 md:pt-12 pb-8 md:pb-12 bg-[#ECEFF1] px-4"
       variants={sectionInView}
       initial="hidden"
