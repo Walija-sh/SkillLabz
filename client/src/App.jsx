@@ -21,6 +21,8 @@ import RentalDetails from "./pages/rentals/RentalDetails";
 import ProtectedRoute from './components/common/ProtectedRoute'; 
 import PublicProfile from "./pages/profile/PublicProfile";
 import Messages from "./pages/chat/Messages";
+import Terms from './pages/legal/Terms';
+import Privacy from './pages/legal/Privacy';
 
 const App = () => {
   const dispatch = useDispatch();
@@ -84,6 +86,8 @@ const App = () => {
         <Route path="/tools/:id/rent" element={<RequestRental />} />
         <Route path="/my-rentals" element={<MyRentals />} />
         <Route path="rentals/:id" element={<RentalDetails />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/privacy" element={<Privacy />} />
         
         
         {/* ==========================================
