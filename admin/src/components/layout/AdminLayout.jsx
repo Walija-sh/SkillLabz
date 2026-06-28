@@ -1,37 +1,30 @@
-import { Outlet, Link, useNavigate } from 'react-router-dom';
-import authService from '../../services/auth.service';
+import React from 'react';
+import { Outlet } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import Sidebar from './Sidebar';
+import Navbar from './Navbar';
 
 const AdminLayout = () => {
-  const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem('adminUser') || '{}');
-
-  const handleLogout = () => {
-    authService.logout();
-    navigate('/login');
-  };
-
   return (
-    <div className="flex h-screen bg-gray-100">
-      {/* Sidebar */}
-      <aside className="w-64 bg-slate-900 text-white flex flex-col">
-        <div className="p-6 text-xl font-bold border-b border-slate-800">SkillLabz Admin</div>
-        <nav className="flex-1 p-4 space-y-2">
-          <Link to="/dashboard" className="block px-4 py-2 rounded hover:bg-slate-800">Dashboard</Link>
-          <Link to="/verifications" className="block px-4 py-2 rounded hover:bg-slate-800">Verifications</Link>
-        </nav>
-        <div className="p-4 border-t border-slate-800">
-          <p className="text-xs text-slate-400 mb-2">Admin: {user.username}</p>
-          <button onClick={handleLogout} className="w-full py-2 bg-red-600 rounded text-sm font-bold">Logout</button>
-        </div>
-      </aside>
+    <div className="flex h-screen bg-[#ECEFF1] overflow-hidden font-sans">
+      {/* Sidebar Component */}
+      <Sidebar />
 
-      {/* Content */}
-      <main className="flex-1 overflow-y-auto">
-        <header className="bg-white shadow px-8 py-4 flex justify-between items-center">
-          <h2 className="text-lg font-semibold text-gray-700">Management Console</h2>
-        </header>
-        <div className="p-8">
-          <Outlet />
+      {/* Main Content Area */}
+      <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
+        {/* Navbar Component */}
+        <Navbar />
+        
+        {/* Page Content with smooth entrance */}
+        <div className="flex-1 overflow-y-auto p-6 sm:p-10 scroll-smooth">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            className="max-w-7xl mx-auto w-full"
+          >
+            <Outlet />
+          </motion.div>
         </div>
       </main>
     </div>
