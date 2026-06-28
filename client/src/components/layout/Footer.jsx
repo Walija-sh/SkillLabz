@@ -33,7 +33,7 @@ export default function Footer() {
           {/* Column 1: Brand & Tagline */}
           <div className="col-span-1 flex flex-col items-center md:items-start">
             <Link to="/" className="flex items-center justify-center gap-3 md:justify-start">
-              <img src="/logo-2.png" alt="SkillLabz logo" className="h-24 w-24 object-contain" />
+              <img src="/logo-2.png" alt="SkillLabz logo" className="h-10 w-10 object-contain" />
               <span className="text-2xl font-bold tracking-tight text-white">SkillLabz</span>
             </Link>
             <p className="mt-4 max-w-sm text-base leading-relaxed text-gray-200 md:pr-4">
