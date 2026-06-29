@@ -21,7 +21,9 @@ connectDb();
 // Middleware
 const allowedOrigins =
   process.env.CORS_ORIGINS?.split(",").map(o => o.trim()) || [];
-const corsOptions = {
+
+
+app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
 
@@ -32,10 +34,7 @@ const corsOptions = {
     return callback(new Error("Not allowed by CORS"));
   },
   credentials: true,
-};
-
-app.use(cors(corsOptions));
-// app.options("*", cors(corsOptions));
+}));
 app.use(express.json());
 
 // =======================
