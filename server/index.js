@@ -20,21 +20,21 @@ connectDb();
 
 // Middleware
 const allowedOrigins = process.env.CORS_ORIGINS.split(',').map(origin => origin.trim());
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin) return callback(null, true);
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
 
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
 
-      callback(new Error("Not allowed by CORS"));
-    },
-    credentials: true,
-  })
-);
-app.options("*", cors());
+    return callback(new Error("Not allowed by CORS"));
+  },
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 app.use(express.json());
 
 // =======================
