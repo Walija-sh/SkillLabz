@@ -19,7 +19,8 @@ const PORT = process.env.PORT || 3000;
 connectDb();
 
 // Middleware
-const allowedOrigins = process.env.CORS_ORIGINS.split(',').map(origin => origin.trim());
+const allowedOrigins =
+  process.env.CORS_ORIGINS?.split(",").map(o => o.trim()) || [];
 const corsOptions = {
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
