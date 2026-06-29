@@ -254,7 +254,7 @@ export default function Navbar() {
               <img
                 src={s ? '/logo-2.png' : '/logo.png'}
                 alt="SkillLabz logo"
-                className="h-18 w-18 object-contain shrink-0 md:h-24 md:w-24"
+                className="h-9 w-9 object-contain shrink-0 md:h-10 md:w-10"
               />
               <span
                 className={`text-2xl font-bold tracking-tight md:text-2xl ${
@@ -783,7 +783,7 @@ export default function Navbar() {
                   <img
                     src="/logo-2.png"
                     alt="SkillLabz logo"
-                    className="h-14 w-14 object-contain shrink-0 md:h-20 md:w-20"
+                    className="h-9 w-9 object-contain shrink-0 md:h-10 md:w-10"
                   />
                   <span className="text-xl font-bold tracking-tight text-white">
                     SkillLabz

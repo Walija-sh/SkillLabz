@@ -1,27 +1,33 @@
-import authService from '../../services/auth.service';
-import { useNavigate } from 'react-router-dom';
+import React from 'react';
+import { motion } from 'framer-motion';
 
 const Navbar = () => {
-  const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('adminUser') || '{}');
 
-  const handleLogout = () => {
-    authService.logout();
-    navigate('/login');
-  };
-
   return (
-    <header className="bg-white border-b border-gray-200 px-8 py-4 flex justify-between items-center">
-      <h2 className="text-sm font-bold text-gray-400 uppercase tracking-widest">Management System</h2>
-      <div className="flex items-center gap-4">
-        <span className="text-xs font-bold text-gray-900 bg-gray-100 px-3 py-1 rounded-full">
-          Admin: {user.username}
+    <motion.header
+      initial={{ y: -20, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      /* Added px-4 for mobile padding and md:px-8 for desktop */
+      className="bg-transparent py-4 px-4 md:px-8 flex justify-between items-center sticky top-0 z-10"
+    >
+      {/* pl-14 pushes the text right to clear the hamburger button on mobile. md:pl-0 resets it on desktop. */}
+      <h2 className="pl-14 md:pl-0 text-xs sm:text-[13px] font-black text-[#191970] uppercase tracking-widest">
+        Management Console
+      </h2>
+
+      {/* User Profile Section */}
+      <div className="flex items-center gap-3">
+        <div className="w-8 h-8 rounded-full bg-[#191970]/10 flex items-center justify-center shrink-0">
+          <span className="text-[#191970] text-[10px] font-black uppercase">
+            {user.username?.charAt(0) || 'A'}
+          </span>
+        </div>
+        <span className="text-[11px] font-black text-[#191970] uppercase tracking-widest hidden sm:block">
+          {user.username || 'Admin User'}
         </span>
-        <button onClick={handleLogout} className="text-xs font-black text-red-500 hover:text-red-700 uppercase">
-          Logout
-        </button>
       </div>
-    </header>
+    </motion.header>
   );
 };
 
