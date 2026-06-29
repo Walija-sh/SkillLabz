@@ -12,6 +12,7 @@ import { verificationEmailTemplate } from "../utils/emailTemplates.js";
 import "../config/firebaseAdmin.js";   // just initialize the app
 import { getAuth } from "firebase-admin/auth";
 
+
 const registerUser = catchAsync(async (req, res, next) => {
   const { username, email, password } = req.body;
 
