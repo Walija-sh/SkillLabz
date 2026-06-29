@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import ChatSidebar from "../../components/chat/ChatSidebar";
 import ChatWindow from "../../components/chat/ChatWindow";
+import chatService from "../../services/chat.service";
 
 const Messages = () => {
   const user = useSelector((state) => state.auth.userData);
@@ -13,10 +14,24 @@ const Messages = () => {
   const chatIdFromURL = searchParams.get("chat");
 
   useEffect(() => {
-    if (!chatIdFromURL) return;
-    setSelectedChat({ chatId: chatIdFromURL });
+  if (!chatIdFromURL) return;
+
+  const loadChat = async () => {
+    try {
+      const chat = await chatService.getChat(chatIdFromURL);
+
+      if (chat) {
+        setSelectedChat(chat);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+
     setShowMobileChat(true);
-  }, [chatIdFromURL]);
+  };
+
+  loadChat();
+}, [chatIdFromURL]);
 
   const handleSelectChat = (chat) => {
     setSelectedChat(chat);

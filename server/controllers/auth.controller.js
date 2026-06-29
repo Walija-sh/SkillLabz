@@ -9,6 +9,8 @@ import cloudinary from '../config/cloudinary.js';
 import crypto from "crypto";
 import sendEmail from "../utils/sendEmail.js";
 import { verificationEmailTemplate } from "../utils/emailTemplates.js";
+import "../config/firebaseAdmin.js";   // just initialize the app
+import { getAuth } from "firebase-admin/auth";
 
 const registerUser = catchAsync(async (req, res, next) => {
   const { username, email, password } = req.body;
@@ -29,14 +31,18 @@ const registerUser = catchAsync(async (req, res, next) => {
   });
 
    const token= generateToken(user._id);
-
-
+const firebaseToken = await getAuth().createCustomToken(
+  user._id.toString()
+);
 
 
   res.status(201).json({
     status: 'success',
     message: 'Registered successfully.',
-    data:formatUserResponse(user,token)
+    data:{
+    ...formatUserResponse(user, token),
+    firebaseToken
+}
   });
 });
 const verifyEmail = catchAsync(async (req, res, next) => {
@@ -124,13 +130,16 @@ const loginUser=catchAsync(async(req,res,next)=>{
         }
       
         const token= generateToken(user._id);
-
-
-          
+const firebaseToken = await getAuth().createCustomToken(
+  user._id.toString()
+);
           res.status(200).json({
         status:'success',
         message:'Login User successfully',
-         data:formatUserResponse(user, token)
+         data:{
+    ...formatUserResponse(user, token),
+    firebaseToken
+}
     })
 
    

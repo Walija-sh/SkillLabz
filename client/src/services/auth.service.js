@@ -1,40 +1,58 @@
 import apiClient from "./api";
-
+import { signInWithCustomToken, signOut } from "firebase/auth";
+import { auth } from "../config/firebase.js"; 
 /**
  * Authentication Service
  * Handles all identity and session-related API calls to the Vercel-hosted Node.js backend.
  */
 const authService = {
   // 1. Create a new user account & Auto-Login
-  signup: async (userData) => {
-    try {
-      const response = await apiClient.post('/auth/register', userData);
-      
-      // Backend now returns token on signup, so we store it for instant login
-      const token = response.data?.data?.token || response.data?.token;
-      if (token) {
-        localStorage.setItem('token', token);
-      }
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: "Network error. Please try again." };
+ signup: async (userData) => {
+  try {
+    const response = await apiClient.post("/auth/register", userData);
+
+    const token = response.data?.data?.token;
+    const firebaseToken = response.data?.data?.firebaseToken;
+
+    if (token) {
+      localStorage.setItem("token", token);
     }
-  },
+
+    if (firebaseToken) {
+      await signInWithCustomToken(auth, firebaseToken);
+    }
+
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || {
+      message: "Network error. Please try again.",
+    };
+  }
+},
 
   // 2. Authenticate existing user and receive JWT
-  login: async (credentials) => {
-    try {
-      const response = await apiClient.post('/auth/login', credentials);
-      
-      const token = response.data?.data?.token || response.data?.token;
-      if (token) {
-        localStorage.setItem('token', token);
-      }
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: "Invalid credentials or server error." };
+ login: async (credentials) => {
+  try {
+    const response = await apiClient.post("/auth/login", credentials);
+
+    const token = response.data?.data?.token;
+    const firebaseToken = response.data?.data?.firebaseToken;
+
+    if (token) {
+      localStorage.setItem("token", token);
     }
-  },
+
+    if (firebaseToken) {
+      await signInWithCustomToken(auth, firebaseToken);
+    }
+
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || {
+      message: "Invalid credentials or server error.",
+    };
+  }
+},
 
   // 3. Send Verification Email (Protected Route - User must be logged in)
   sendVerificationEmail: async () => {
@@ -71,9 +89,10 @@ const authService = {
   },
 
   // 6. Logout (Clear local session)
-  logout: () => {
-    localStorage.removeItem('token');
-  }
+ logout: async () => {
+  localStorage.removeItem("token");
+  await signOut(auth);
+}
 };
 
 export default authService;

@@ -35,6 +35,9 @@ const ChatWindow = ({ currentUser, selectedChat, onBack }) => {
 
   // Reset + reload other user whenever chat changes
   useEffect(() => {
+
+      if (!selectedChat?.participants) return;
+
     setOtherUser(null);
     setUserLoading(true);
 
@@ -55,7 +58,9 @@ const ChatWindow = ({ currentUser, selectedChat, onBack }) => {
       }
     };
 
-    if (selectedChat) loadOtherUser();
+    if (selectedChat?.participants) {
+  loadOtherUser();
+}
   }, [selectedChat]);
 
   useEffect(() => {

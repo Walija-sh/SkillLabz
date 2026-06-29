@@ -51,7 +51,7 @@ export default function Login() {
       const result = await authService.login(formData);
       if (result && result.data) {
         dispatch(authLogin(result.data));
-        console.log(result.data);
+      
         navigate('/');
       }
     } catch (err) {

@@ -207,6 +207,19 @@ const markChatAsRead = async (
     },
   });
 };
+
+const getChat = async (chatId) => {
+  const chatRef = ref(db, `chats/${chatId}`);
+
+  const snapshot = await get(chatRef);
+
+  if (!snapshot.exists()) return null;
+
+  return {
+    chatId,
+    ...snapshot.val(),
+  };
+};
 const chatService = {
   generateChatId,
   createOrGetChat,
@@ -214,6 +227,7 @@ const chatService = {
   subscribeToMessages,
   subscribeToUserChats,
   markChatAsRead,
+  getChat,
 };
 
 export default chatService;
