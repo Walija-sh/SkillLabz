@@ -16,10 +16,15 @@ const fadeUp = {
 const ChatSidebar = ({ currentUser, selectedChat, setSelectedChat }) => {
   const [chats, setChats]     = useState([]);
   const [usersMap, setUsersMap] = useState({});
+  const [isLoadingChats, setIsLoadingChats] = useState(true);
 
   useEffect(() => {
     if (!currentUser?.id) return;
-    const unsubscribe = chatService.subscribeToUserChats(currentUser.id, setChats);
+      setIsLoadingChats(true);
+    const unsubscribe = chatService.subscribeToUserChats(currentUser.id, (data) => {
+    setChats(data);
+    setIsLoadingChats(false);
+  });
     return () => unsubscribe();
   }, [currentUser]);
 
@@ -57,7 +62,14 @@ const ChatSidebar = ({ currentUser, selectedChat, setSelectedChat }) => {
 
       {/* List */}
       <div className="flex-1 overflow-y-auto">
-        {chats.length === 0 ? (
+        {isLoadingChats ? (
+  <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+    <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#191970]/10 border-t-[#191970]" />
+    <p className="mt-3 text-xs font-black uppercase tracking-widest text-gray-300">
+      Loading conversations…
+    </p>
+  </div>
+) : chats.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
             <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3" style={{ backgroundColor: NAVY + "0d" }}>
               <svg className="w-6 h-6" style={{ color: NAVY + "40" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
