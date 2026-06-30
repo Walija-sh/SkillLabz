@@ -506,7 +506,7 @@ export default function ListTool() {
                     </svg>
                   </div>
                   <p className="text-sm font-bold text-gray-700 mb-1">Click to upload photos</p>
-                  <p className="text-xs text-gray-400">PNG, JPG · Max 3 images · Up to 10 MB each</p>
+                  <p className="text-xs text-gray-400"> PNG, JPG · Max 3 images · Up to 2 MB each</p>
                 </div>
               )}
             </div>
