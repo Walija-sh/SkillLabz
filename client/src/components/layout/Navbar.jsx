@@ -115,11 +115,17 @@ export default function Navbar() {
   const [notifLoading, setNotifLoading] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
-  const notifRef = useRef(null);
+
+  // const notifRef = useRef(null);
+  const notifDesktopRef = useRef(null);
+const notifMobileRef = useRef(null);
   const profileRef = useRef(null);
+
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
+
+  
 
   const isLoggedIn = useSelector((s) => s.auth.status);
   const userData = useSelector((s) => s.auth.userData);
@@ -143,11 +149,13 @@ export default function Navbar() {
   // Click-outside notifications and profile dropdown
   useEffect(() => {
     const handler = (e) => {
-      if (notifRef.current && !notifRef.current.contains(e.target))
-        setIsNotifOpen(false);
-      if (profileRef.current && !profileRef.current.contains(e.target))
-        setIsProfileOpen(false);
-    };
+  if (notifDesktopRef.current && !notifDesktopRef.current.contains(e.target))
+    setIsNotifOpen(false);
+  if (notifMobileRef.current && !notifMobileRef.current.contains(e.target))
+    setIsNotifOpen(false);
+  if (profileRef.current && !profileRef.current.contains(e.target))
+    setIsProfileOpen(false);
+};
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
@@ -174,7 +182,7 @@ export default function Navbar() {
       return;
     }
     fetchNotifications();
-    const id = setInterval(fetchNotifications, 15000);
+    const id = setInterval(fetchNotifications, 30000);
     return () => clearInterval(id);
   }, [isLoggedIn, fetchNotifications]);
 
@@ -203,23 +211,18 @@ export default function Navbar() {
     setIsProfileOpen(false);
   };
 
-  const handleNotifClick = async (notif) => {
-    if (!notif.isRead) {
-      try {
-        await notificationService.markAsRead(notif._id);
-        setNotifications((prev) =>
-          prev.map((n) =>
-            n._id === notif._id ? { ...n, isRead: true } : n
-          )
-        );
-        setUnreadCount((c) => Math.max(0, c - 1));
-      } catch (e) {
-        console.error(e);
-      }
-    }
-    setIsNotifOpen(false);
-    navigate(notif.actionLink || '/my-rentals');
-  };
+const handleNotifClick = (notif) => {
+  setIsNotifOpen(false);
+  if (!notif.isRead) {
+    notificationService.markAsRead(notif._id).catch((e) => console.error(e));
+    setNotifications((prev) =>
+      prev.map((n) =>
+        n._id === notif._id ? { ...n, isRead: true } : n
+      )
+    );
+    setUnreadCount((c) => Math.max(0, c - 1));
+  }
+};
 
   const markAllRead = async () => {
     try {
@@ -330,7 +333,7 @@ export default function Navbar() {
               ) : (
                 <div className="relative flex items-center gap-4 ml-2">
                   {/* Desktop Bell Notification */}
-                  <div ref={notifRef} className="relative">
+                  <div ref={notifDesktopRef} className="relative">
                     <button
                       type="button"
                       onClick={() => setIsNotifOpen((v) => !v)}
@@ -375,14 +378,14 @@ export default function Navbar() {
                               <button
                                 type="button"
                                 onClick={markAllRead}
-                                className="rounded-full border border-blue-100 bg-white px-3 py-2 text-xs font-semibold text-blue-700 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-800"
+                                className="rounded-full border border-blue-100 bg-white px-3 py-2 text-xs font-semibold text-blue-700 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-800 relative z-60 cursor-pointer"
                               >
                                 Mark all read
                               </button>
                             </div>
                           </div>
 
-                          <div className="max-h-96 overflow-y-auto overflow-x-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.98))]">
+                          <div className="max-h-96 overflow-y-auto overflow-x-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.98))] relative z-100">
                             {notifLoading ? (
                               <div className="px-5 py-8 text-center">
                                 <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" />
@@ -403,59 +406,62 @@ export default function Navbar() {
                                 </p>
                               </div>
                             ) : (
-                              notifications.map((n, index) => (
-                                <motion.button
-                                  type="button"
-                                  key={n._id}
-                                  custom={index}
-                                  variants={notifItemVariants}
-                                  initial="hidden"
-                                  animate="show"
-                                  onClick={() => handleNotifClick(n)}
-                                  whileHover={{
-                                    scale: 1.01,
-                                    backgroundColor: n.isRead
-                                      ? '#ffffff'
-                                      : '#eff6ff',
-                                  }}
-                                  whileTap={{ scale: 0.995 }}
-                                  className={`group w-full border-b border-slate-100 px-5 py-4 text-left transition-colors overflow-hidden ${
-                                    n.isRead ? 'bg-white' : 'bg-blue-50/60'
-                                  }`}
-                                >
-                                  <div className="flex items-start gap-3">
-                                    <div
-                                      className={`mt-1 h-2.5 w-2.5 rounded-full ${
-                                        n.isRead
-                                          ? 'bg-slate-300'
-                                          : 'bg-blue-600 shadow-[0_0_0_6px_rgba(25,25,112,0.08)]'
-                                      }`}
-                                    />
-                                    <div className="min-w-0 flex-1">
-                                      <div className="flex items-start justify-between gap-3">
-                                        <p
-                                          className={`min-w-0 wrap-break-word text-sm font-bold leading-snug ${
-                                            n.isRead
-                                              ? 'text-slate-900'
-                                              : 'text-blue-950'
-                                          }`}
-                                        >
-                                          {n.title}
-                                        </p>
-                                        <span className="shrink-0 rounded-full bg-blue-600/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-700 opacity-0 transition group-hover:opacity-100">
-                                          Open
-                                        </span>
-                                      </div>
-                                      <p className="mt-1 wrap-break-word text-xs leading-relaxed text-slate-600">
-                                        {n.message}
-                                      </p>
-                                      <p className="mt-2 wrap-break-word text-[11px] font-medium text-slate-400">
-                                        {new Date(n.createdAt).toLocaleString()}
-                                      </p>
-                                    </div>
-                                  </div>
-                                </motion.button>
-                              ))
+notifications.map((n, index) => {
+  const destination = n.actionLink?.trim() || '/my-rentals';
+  return (
+    <motion.div
+      key={n._id}
+      custom={index}
+      variants={notifItemVariants}
+      initial="hidden"
+      animate="show"
+      whileHover={{
+        scale: 1.01,
+        backgroundColor: n.isRead ? '#f8fafc' : '#eff6ff',
+      }}
+      whileTap={{ scale: 0.995 }}
+      className={`group border-b border-slate-100 overflow-hidden ${
+        n.isRead ? 'bg-white' : 'bg-blue-50/60'
+      }`}
+    >
+      <Link
+        to={destination}
+        onClick={() => handleNotifClick(n)}
+        className="block w-full px-5 py-4 text-left"
+      >
+        <div className="flex items-start gap-3">
+          <div
+            className={`mt-1 h-2.5 w-2.5 rounded-full ${
+              n.isRead
+                ? 'bg-slate-300'
+                : 'bg-blue-600 shadow-[0_0_0_6px_rgba(25,25,112,0.08)]'
+            }`}
+          />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-3">
+              <p
+                className={`min-w-0 wrap-break-word text-sm font-bold leading-snug ${
+                  n.isRead ? 'text-slate-900' : 'text-blue-950'
+                }`}
+              >
+                {n.title}
+              </p>
+              <span className="shrink-0 rounded-full bg-blue-600/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-700 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                Open
+              </span>
+            </div>
+            <p className="mt-1 wrap-break-word text-xs leading-relaxed text-slate-600">
+              {n.message}
+            </p>
+            <p className="mt-2 wrap-break-word text-[11px] font-medium text-slate-400">
+              {new Date(n.createdAt).toLocaleString()}
+            </p>
+          </div>
+        </div>
+      </Link>
+    </motion.div>
+  );
+})
                             )}
                           </div>
                         </motion.div>
@@ -572,7 +578,7 @@ export default function Navbar() {
             <div className="flex items-center gap-2 md:hidden ml-4">
               {/* Mobile Notification Bell */}
               {isLoggedIn && (
-                <div ref={notifRef} className="relative">
+                <div ref={notifMobileRef} className="relative">
                   <button
                     type="button"
                     onClick={() => setIsNotifOpen((v) => !v)}
@@ -617,14 +623,14 @@ export default function Navbar() {
                             <button
                               type="button"
                               onClick={markAllRead}
-                              className="rounded-full border border-blue-100 bg-white px-3 py-2 text-xs font-semibold text-blue-700 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-800"
+                              className="rounded-full border border-blue-100 bg-white px-3 py-2 text-xs font-semibold text-blue-700 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-800 relative z-60 cursor-pointer"
                             >
                               Mark all read
                             </button>
                           </div>
                         </div>
 
-                        <div className="max-h-80 overflow-y-auto overflow-x-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.98))]">
+                        <div className="max-h-80 relative z-100 overflow-y-auto overflow-x-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.98))]">
                           {notifLoading ? (
                             <div className="px-5 py-8 text-center">
                               <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" />
@@ -645,56 +651,57 @@ export default function Navbar() {
                               </p>
                             </div>
                           ) : (
-                            notifications.map((n, index) => (
-                              <motion.button
-                                type="button"
-                                key={n._id}
-                                custom={index}
-                                variants={notifItemVariants}
-                                initial="hidden"
-                                animate="show"
-                                onClick={() => handleNotifClick(n)}
-                                whileHover={{
-                                  scale: 1.01,
-                                  backgroundColor: n.isRead
-                                    ? '#ffffff'
-                                    : '#eff6ff',
-                                }}
-                                whileTap={{ scale: 0.995 }}
-                                className={`group w-full border-b border-slate-100 px-5 py-4 text-left transition-colors overflow-hidden ${
-                                  n.isRead ? 'bg-white' : 'bg-blue-50/60'
-                                }`}
-                              >
-                                <div className="flex items-start gap-3">
-                                  <div
-                                    className={`mt-1 h-2.5 w-2.5 rounded-full ${
-                                      n.isRead
-                                        ? 'bg-slate-300'
-                                        : 'bg-blue-600 shadow-[0_0_0_6px_rgba(25,25,112,0.08)]'
-                                    }`}
-                                  />
-                                  <div className="min-w-0 flex-1">
-                                    <div className="flex items-start justify-between gap-3">
-                                      <p
-                                        className={`min-w-0 wrap-break-word text-sm font-bold leading-snug ${
-                                          n.isRead
-                                            ? 'text-slate-900'
-                                            : 'text-blue-950'
-                                        }`}
-                                      >
-                                        {n.title}
-                                      </p>
-                                    </div>
-                                    <p className="mt-1 wrap-break-word text-xs leading-relaxed text-slate-600">
-                                      {n.message}
-                                    </p>
-                                    <p className="mt-2 wrap-break-word text-[11px] font-medium text-slate-400">
-                                      {new Date(n.createdAt).toLocaleString()}
-                                    </p>
-                                  </div>
-                                </div>
-                              </motion.button>
-                            ))
+notifications.map((n, index) => {
+  const destination = n.actionLink?.trim() || '/my-rentals';
+  return (
+    <motion.div
+      key={n._id}
+      custom={index}
+      variants={notifItemVariants}
+      initial="hidden"
+      animate="show"
+      whileHover={{
+        scale: 1.01,
+        backgroundColor: n.isRead ? '#ffffff' : '#eff6ff',
+      }}
+      whileTap={{ scale: 0.995 }}
+      className={`border-b border-slate-100 overflow-hidden ${
+        n.isRead ? 'bg-white' : 'bg-blue-50/60'
+      }`}
+    >
+      <Link
+        to={destination}
+        onClick={() => handleNotifClick(n)}
+        className="block w-full px-5 py-4 text-left"
+      >
+        <div className="flex items-start gap-3">
+          <div
+            className={`mt-1 h-2.5 w-2.5 rounded-full ${
+              n.isRead
+                ? 'bg-slate-300'
+                : 'bg-blue-600 shadow-[0_0_0_6px_rgba(25,25,112,0.08)]'
+            }`}
+          />
+          <div className="min-w-0 flex-1">
+            <p
+              className={`min-w-0 wrap-break-word text-sm font-bold leading-snug ${
+                n.isRead ? 'text-slate-900' : 'text-blue-950'
+              }`}
+            >
+              {n.title}
+            </p>
+            <p className="mt-1 wrap-break-word text-xs leading-relaxed text-slate-600">
+              {n.message}
+            </p>
+            <p className="mt-2 wrap-break-word text-[11px] font-medium text-slate-400">
+              {new Date(n.createdAt).toLocaleString()}
+            </p>
+          </div>
+        </div>
+      </Link>
+    </motion.div>
+  );
+})
                           )}
                         </div>
                       </motion.div>
