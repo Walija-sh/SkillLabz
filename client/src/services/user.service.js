@@ -20,10 +20,19 @@ const userService = {
   /**
    * Uploads a profile picture to Cloudinary via the backend.
    */
-  uploadProfileImage: async (formData) => {
-    const response = await apiClient.patch('/auth/upload-profile-image', formData);
-    return response.data;
-  },
+uploadProfileImage: async (formData) => {
+  const response = await apiClient.patch(
+    '/auth/upload-profile-image',
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }
+  );
+
+  return response.data;
+},
 
   /**
    * Requests the backend to send a verification email.

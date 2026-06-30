@@ -140,7 +140,7 @@ export default function CompleteProfile() {
 
       if (selectedFile) {
         const imageFormData = new FormData();
-        imageFormData.append('profileImage', selectedFile);
+        imageFormData.append('profileImage', selectedFile);     
         const imageResponse = await userService.uploadProfileImage(imageFormData);
         const newProfileImage = imageResponse.data?.profileImage || imageResponse.data?.data?.profileImage;
         if (newProfileImage) dispatch(updateUser({ profileImage: newProfileImage }));
