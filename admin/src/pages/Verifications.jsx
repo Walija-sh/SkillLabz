@@ -235,93 +235,102 @@ const Verifications = () => {
       </AnimatePresence>
 
       {/* ── Table Card ── */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: 0.08, ease: 'easeOut' }}
-        className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden"
-      >
-        {/* Card Header */}
-        <div className="px-7 py-5 border-b border-slate-100 flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-widest mb-0.5" style={{ color: '#191970' }}>
-              Identity Verifications
-            </p>
-            <p className="text-sm text-slate-400 font-medium">{requests.length} pending review</p>
-          </div>
-          <span
-            className="text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-full"
-            style={{ backgroundColor: '#191970', color: '#fff' }}
+
+<motion.div
+  initial={{ opacity: 0, y: 10 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ duration: 0.35, delay: 0.08, ease: 'easeOut' }}
+  className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden"
+>
+  {/* Card Header */}
+  <div className="px-4 sm:px-7 py-4 sm:py-5 border-b border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
+    <div>
+      <p className="text-[10px] font-black uppercase tracking-widest mb-0.5" style={{ color: '#191970' }}>
+        Identity Verifications
+      </p>
+      <p className="text-sm text-slate-400 font-medium">{requests.length} pending review</p>
+    </div>
+    <span
+      className="text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-full whitespace-nowrap"
+      style={{ backgroundColor: '#191970', color: '#fff' }}
+    >
+      {requests.length} Pending
+    </span>
+  </div>
+
+  {/* Responsive Table with Wrapped Rows */}
+  <div className="overflow-x-auto">
+    <table className="w-full">
+      <thead className="hidden sm:table-header-group">
+        <tr className="border-b border-slate-100">
+          <th className="px-4 sm:px-7 py-3 sm:py-3.5 text-[10px] font-black uppercase tracking-widest text-left" style={{ color: '#94a3b8' }}>
+            User
+          </th>
+          <th className="px-4 sm:px-7 py-3 sm:py-3.5 text-[10px] font-black uppercase tracking-widest text-left" style={{ color: '#94a3b8' }}>
+            Legal Name
+          </th>
+          <th className="px-4 sm:px-7 py-3 sm:py-3.5 text-[10px] font-black uppercase tracking-widest text-right" style={{ color: '#94a3b8' }}>
+            Action
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {requests.map((req, i) => (
+          <motion.tr
+            key={req._id}
+            custom={i}
+            variants={fadeUp}
+            initial="hidden"
+            animate="visible"
+            className="block sm:table-row border-b border-slate-100 last:border-0 transition-colors mb-4 sm:mb-0"
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
           >
-            {requests.length} Pending
-          </span>
-        </div>
-
-        {/* Table */}
-        <table className="w-full text-left">
-          <thead>
-            <tr className="border-b border-slate-100">
-              {['User', 'Legal Name', 'Action'].map((h, i) => (
-                <th
-                  key={h}
-                  className={`px-7 py-3.5 text-[10px] font-black uppercase tracking-widest ${i === 2 ? 'text-right' : ''}`}
-                  style={{ color: '#94a3b8' }}
+            {/* User Column */}
+            <td className="block sm:table-cell px-4 sm:px-7 py-3 sm:py-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div
+                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-xs font-black flex-shrink-0"
+                  style={{ backgroundColor: 'rgba(25,25,112,0.08)', color: '#191970' }}
                 >
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {requests.map((req, i) => (
-              <motion.tr
-                key={req._id}
-                custom={i}
-                variants={fadeUp}
-                initial="hidden"
-                animate="visible"
-                className="border-b border-slate-50 last:border-0 transition-colors"
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                  {req.user?.username?.[0]?.toUpperCase() || <UserCircleIcon className="w-4 h-4" />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-black text-slate-800 truncate">{req.user?.username}</p>
+                  <p className="text-xs text-slate-400 font-medium truncate">{req.user?.email}</p>
+                </div>
+              </div>
+            </td>
+
+            {/* Legal Name Column */}
+            <td className="block sm:table-cell px-4 sm:px-7 py-2 sm:py-4">
+              <span className="sm:hidden text-[10px] font-black uppercase tracking-widest mr-2" style={{ color: '#94a3b8' }}>
+                Legal Name:
+              </span>
+              <p className="text-sm font-bold text-slate-600 inline-block sm:block">{req.fullName}</p>
+            </td>
+
+            {/* Action Column */}
+            <td className="block sm:table-cell px-4 sm:px-7 py-3 sm:py-4 text-left sm:text-right">
+              <span className="sm:hidden text-[10px] font-black uppercase tracking-widest mr-2" style={{ color: '#94a3b8' }}>
+                Action:
+              </span>
+              <button
+                onClick={() => { setSelected(req); setError(null); }}
+                className="text-[10px] font-black uppercase tracking-widest px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl transition-colors whitespace-nowrap"
+                style={{ backgroundColor: 'rgba(25,25,112,0.07)', color: '#191970' }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(25,25,112,0.14)')}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgba(25,25,112,0.07)')}
               >
-                {/* User */}
-                <td className="px-7 py-4">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-black flex-shrink-0"
-                      style={{ backgroundColor: 'rgba(25,25,112,0.08)', color: '#191970' }}
-                    >
-                      {req.user?.username?.[0]?.toUpperCase() || <UserCircleIcon className="w-4 h-4" />}
-                    </div>
-                    <div>
-                      <p className="text-sm font-black text-slate-800">{req.user?.username}</p>
-                      <p className="text-xs text-slate-400 font-medium">{req.user?.email}</p>
-                    </div>
-                  </div>
-                </td>
-
-                {/* Legal Name */}
-                <td className="px-7 py-4">
-                  <p className="text-sm font-bold text-slate-600">{req.fullName}</p>
-                </td>
-
-                {/* Action */}
-                <td className="px-7 py-4 text-right">
-                  <button
-                    onClick={() => { setSelected(req); setError(null); }}
-                    className="text-[10px] font-black uppercase tracking-widest px-5 py-2.5 rounded-xl transition-colors"
-                    style={{ backgroundColor: 'rgba(25,25,112,0.07)', color: '#191970' }}
-                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(25,25,112,0.14)')}
-                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgba(25,25,112,0.07)')}
-                  >
-                    Review
-                  </button>
-                </td>
-              </motion.tr>
-            ))}
-          </tbody>
-        </table>
-      </motion.div>
+                Review
+              </button>
+            </td>
+          </motion.tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</motion.div>
 
       {/* ══ REVIEW MODAL ══════════════════════════════════════════════════════ */}
       <AnimatePresence>
